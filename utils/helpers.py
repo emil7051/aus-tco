@@ -6,11 +6,12 @@ formatting data, and other utility operations used throughout the application.
 """
 
 import os
+import glob
 import yaml
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import streamlit as st
 
 from tco_model.models import (
@@ -68,7 +69,10 @@ def load_config_as_model(file_path: Union[str, Path], model_class: Type[T]) -> T
         ValidationError: If the data doesn't match the model schema
     """
     data = load_yaml_file(file_path)
-    return model_class.parse_obj(data)
+    try:
+        return model_class.parse_obj(data)
+    except ValidationError as e:
+        raise ValidationError(f"Validation error in {file_path}: {str(e)}", model_class)
 
 
 def load_economic_parameters(config_path: Optional[str] = None) -> EconomicParameters:
@@ -262,4 +266,277 @@ def load_bet_parameters(config_path: str) -> BETParameters:
     )
     
     # Create infrastructure parameters if available
-    infrastructure_params
+    infrastructure_params = None
+    if infrastructure_data:
+        infrastructure_params = InfrastructureParameters(
+            charger_hardware_cost=infrastructure_data.get('charger_hardware_cost', 150000),
+            installation_cost=infrastructure_data.get('installation_cost', 50000),
+            maintenance_annual_percentage=infrastructure_data.get('maintenance_annual_percentage', 0.015),
+            trucks_per_charger=infrastructure_data.get('trucks_per_charger', 1.0),
+            grid_upgrade_cost=infrastructure_data.get('grid_upgrade_cost', 0)
+        )
+    else:
+        # Try to load from operational parameters
+        op_params_path = os.path.join(settings.defaults_config_path, "operational_parameters.yaml")
+        op_data = load_yaml_file(op_params_path)
+        infra_data = op_data.get('infrastructure', {})
+        
+        infrastructure_params = InfrastructureParameters(
+            charger_hardware_cost=infra_data.get('charger_hardware', {}).get('high_power_350kw_plus', 150000),
+            installation_cost=infra_data.get('installation', {}).get('default', 50000),
+            maintenance_annual_percentage=infra_data.get('maintenance', {}).get('annual_percentage', 0.015),
+            trucks_per_charger=1.0,
+            grid_upgrade_cost=0
+        )
+    
+    # Create the full BET parameters
+    return BETParameters(
+        name=vehicle_info.get('name', 'Default BET'),
+        type=VehicleType.BATTERY_ELECTRIC,
+        category=vehicle_info.get('category', 'articulated'),
+        purchase_price=purchase.get('base_price_2025', 400000),
+        annual_price_decrease_real=purchase.get('annual_price_decrease_real', 0.02),
+        max_payload_tonnes=performance.get('max_payload_tonnes', 26),
+        range_km=performance.get('range_km', 350),
+        battery=battery_params,
+        energy_consumption=energy_params,
+        charging=charging_params,
+        maintenance=maintenance_params,
+        residual_value=residual_params,
+        infrastructure=infrastructure_params
+    )
+
+
+def load_diesel_parameters(config_path: str) -> DieselParameters:
+    """
+    Load Diesel Truck parameters from configuration.
+    
+    Args:
+        config_path: Path to the configuration file
+        
+    Returns:
+        DieselParameters model with values from the configuration
+    """
+    data = load_yaml_file(config_path)
+    
+    # Extract sections
+    vehicle_info = data.get('vehicle_info', {})
+    purchase = data.get('purchase', {})
+    engine_data = data.get('engine', {})
+    fuel_data = data.get('fuel_consumption', {})
+    maintenance_data = data.get('maintenance', {})
+    residual_data = data.get('residual_values', {}) if 'residual_values' in data else None
+    performance = data.get('performance', {})
+    
+    # Load residual value data from operational parameters if not in vehicle config
+    if not residual_data:
+        op_params_path = os.path.join(settings.defaults_config_path, "operational_parameters.yaml")
+        op_data = load_yaml_file(op_params_path)
+        
+        if vehicle_info.get('category') == 'rigid':
+            residual_data = op_data.get('residual_values', {}).get('rigid_diesel', {})
+        else:
+            residual_data = op_data.get('residual_values', {}).get('articulated_diesel', {})
+    
+    # Create engine parameters
+    engine_params = EngineParameters(
+        power_kw=engine_data.get('power_kw', 400),
+        displacement_litres=engine_data.get('displacement_litres', 13),
+        euro_emission_standard=engine_data.get('euro_emission_standard', 'Euro 6'),
+        adblue_required=engine_data.get('adblue_required', True),
+        adblue_consumption_percent_of_diesel=engine_data.get('adblue_consumption_percent_of_diesel', 0.05)
+    )
+    
+    # Create fuel consumption parameters
+    consumption_range = fuel_data.get('consumption_range', {})
+    fuel_params = DieselConsumptionParameters(
+        base_rate=fuel_data.get('base_rate_l_per_km', 0.53),
+        min_rate=consumption_range.get('min', 0.45),
+        max_rate=consumption_range.get('max', 0.60),
+        load_adjustment_factor=fuel_data.get('load_adjustment_factor', 0.25),
+        hot_weather_adjustment=fuel_data.get('temperature_adjustment', {}).get('hot_weather', 0.03),
+        cold_weather_adjustment=fuel_data.get('temperature_adjustment', {}).get('cold_weather', 0.05)
+    )
+    
+    # Create maintenance parameters
+    detailed_costs = maintenance_data.get('detailed_costs', {})
+    maintenance_params = MaintenanceParameters(
+        cost_per_km=maintenance_data.get('cost_per_km', 0.15),
+        annual_fixed_min=detailed_costs.get('annual_fixed_min', 2500),
+        annual_fixed_max=detailed_costs.get('annual_fixed_max', 5000),
+        annual_fixed_default=(detailed_costs.get('annual_fixed_min', 2500) + detailed_costs.get('annual_fixed_max', 5000)) / 2,
+        scheduled_maintenance_interval_km=maintenance_data.get('scheduled_maintenance_interval_km', 25000),
+        major_service_interval_km=maintenance_data.get('major_service_interval_km', 100000)
+    )
+    
+    # Create residual value parameters
+    residual_params = ResidualValueParameters(
+        year_5_range=residual_data.get('year_5', [0.45, 0.55]),
+        year_10_range=residual_data.get('year_10', [0.25, 0.35]),
+        year_15_range=residual_data.get('year_15', [0.10, 0.20])
+    )
+    
+    # Create the full diesel parameters
+    return DieselParameters(
+        name=vehicle_info.get('name', 'Default Diesel'),
+        type=VehicleType.DIESEL,
+        category=vehicle_info.get('category', 'articulated'),
+        purchase_price=purchase.get('base_price_2025', 200000),
+        annual_price_decrease_real=purchase.get('annual_price_decrease_real', 0.00),
+        max_payload_tonnes=performance.get('max_payload_tonnes', 28),
+        range_km=performance.get('range_km', 2200),
+        engine=engine_params,
+        fuel_consumption=fuel_params,
+        maintenance=maintenance_params,
+        residual_value=residual_params
+    )
+
+
+def load_default_scenario(vehicle_config_name: str) -> ScenarioInput:
+    """
+    Create a complete default scenario with all necessary parameters.
+    
+    Args:
+        vehicle_config_name: Name of the vehicle configuration file (without extension)
+        
+    Returns:
+        ScenarioInput model with default values
+    """
+    # Determine vehicle type from config name
+    if "bet" in vehicle_config_name.lower():
+        vehicle_type = VehicleType.BATTERY_ELECTRIC
+    else:
+        vehicle_type = VehicleType.DIESEL
+    
+    # Load parameters
+    vehicle_path = os.path.join(settings.vehicles_config_path, f"{vehicle_config_name}.yaml")
+    vehicle = load_vehicle_parameters(vehicle_type, vehicle_path)
+    
+    economic = load_economic_parameters()
+    operational = load_operational_parameters()
+    financing = load_financing_parameters()
+    
+    # Create scenario
+    return ScenarioInput(
+        scenario_name=f"Default {vehicle.name} Scenario",
+        vehicle=vehicle,
+        operational=operational,
+        economic=economic,
+        financing=financing
+    )
+
+
+def find_available_vehicle_configs() -> Dict[VehicleType, List[str]]:
+    """
+    Find all available vehicle configuration files in the config directory.
+    
+    Returns:
+        Dict mapping vehicle types to lists of available config names
+    """
+    result = {
+        VehicleType.BATTERY_ELECTRIC: [],
+        VehicleType.DIESEL: []
+    }
+    
+    # Get all YAML files in the vehicles directory
+    yaml_files = glob.glob(os.path.join(settings.vehicles_config_path, "*.yaml"))
+    
+    for file_path in yaml_files:
+        try:
+            data = load_yaml_file(file_path)
+            vehicle_type = data.get('vehicle_info', {}).get('type')
+            
+            if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
+                result[VehicleType.BATTERY_ELECTRIC].append(os.path.basename(file_path).split('.')[0])
+            elif vehicle_type == VehicleType.DIESEL.value:
+                result[VehicleType.DIESEL].append(os.path.basename(file_path).split('.')[0])
+        except (FileNotFoundError, yaml.YAMLError, KeyError):
+            # Skip files with errors
+            continue
+    
+    return result
+
+
+# --- Streamlit State Management Helpers ---
+
+def get_safe_state_value(key: str, default: Any = None) -> Any:
+    """
+    Safely access a possibly nested value in Streamlit session state.
+    
+    Args:
+        key: Dot-separated path to the value (e.g., "vehicle_1.parameters.purchase_price")
+        default: Default value to return if the key doesn't exist
+        
+    Returns:
+        Value from session state or default
+    """
+    if '.' not in key:
+        return st.session_state.get(key, default)
+    
+    parts = key.split('.')
+    current = st.session_state
+    
+    for part in parts:
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return default
+    
+    return current
+
+
+def set_safe_state_value(key: str, value: Any) -> None:
+    """
+    Safely set a possibly nested value in Streamlit session state.
+    
+    Args:
+        key: Dot-separated path to the value (e.g., "vehicle_1.parameters.purchase_price")
+        value: Value to set
+    """
+    if '.' not in key:
+        st.session_state[key] = value
+        return
+    
+    parts = key.split('.')
+    last_part = parts.pop()
+    
+    current = st.session_state
+    
+    # Navigate to the parent object
+    for part in parts:
+        if part not in current:
+            current[part] = {}
+        current = current[part]
+    
+    # Set the value
+    current[last_part] = value
+
+
+# --- Formatting Utilities ---
+
+def format_currency(value: float, decimals: int = 0) -> str:
+    """
+    Format a value as Australian currency.
+    
+    Args:
+        value: Value to format
+        decimals: Number of decimal places to show
+        
+    Returns:
+        Formatted currency string
+    """
+    return f"${value:,.{decimals}f}"
+
+
+def format_percentage(value: float, decimals: int = 1) -> str:
+    """
+    Format a decimal value as a percentage.
+    
+    Args:
+        value: Value to format (e.g., 0.07 for 7%)
+        decimals: Number of decimal places to show
+        
+    Returns:
+        Formatted percentage string
+    """
+    return f"{value * 100:.{decimals}f}%"

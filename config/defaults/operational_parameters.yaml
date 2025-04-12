@@ -1,0 +1,88 @@
+# Operational Parameters Default Configuration
+
+# Annual mileage profiles
+annual_mileage:
+  articulated:
+    average: 79400
+    notes: "Australian average for articulated trucks"
+  urban_delivery:
+    min: 20000
+    max: 50000
+    default: 40000
+  regional_long_haul:
+    min: 80000
+    max: 120000
+    default: 100000
+
+# Standard operational profiles
+standard_profiles:
+  urban_delivery:
+    vehicle_type: "rigid"
+    annual_distance_km: 40000
+    operating_days_per_year: 250
+    daily_distance_km: 160
+    charging_strategy: "overnight_depot"
+    
+  regional_delivery:
+    vehicle_type: "rigid"
+    annual_distance_km: 60000
+    operating_days_per_year: 260
+    daily_distance_km: 230
+    charging_strategy: "mixed"
+    
+  long_haul:
+    vehicle_type: "articulated"
+    annual_distance_km: 100000
+    operating_days_per_year: 280
+    daily_distance_km: 357
+    charging_strategy: "opportunity"
+    notes: "May require battery replacement or additional charging"
+
+# Infrastructure costs
+infrastructure:
+  charger_hardware:
+    dc_fast_150kw: 50000
+    high_power_350kw_plus: 150000
+  installation:
+    min: 30000
+    max: 80000
+    default: 50000
+    notes: "Per charger"
+  total_per_truck:
+    min: 100000
+    max: 150000
+    default: 120000
+    notes: "Includes share of charger + installation"
+  maintenance:
+    annual_percentage: 0.015  # 1.5% of capital cost
+    notes: "Annual maintenance cost as percentage of capital investment"
+
+# Other operational costs
+insurance_and_registration:
+  insurance:
+    electric_prime_mover: 20000
+    diesel_prime_mover: 10000
+    notes: "Based on vehicle value"
+  registration:
+    electric: 5000
+    diesel: 5000
+    notes: "Similar for both types"
+
+# Residual value projections (as percentage of initial purchase price)
+residual_values:
+  rigid_bet:
+    year_5: [0.40, 0.50]
+    year_10: [0.20, 0.30]
+    year_15: [0.10, 0.15]
+  articulated_bet:
+    year_5: [0.35, 0.45]
+    year_10: [0.15, 0.25]
+    year_15: [0.05, 0.10]
+  rigid_diesel:
+    year_5: [0.50, 0.60]
+    year_10: [0.30, 0.40]
+    year_15: [0.15, 0.25]
+  articulated_diesel:
+    year_5: [0.45, 0.55]
+    year_10: [0.25, 0.35]
+    year_15: [0.10, 0.20]
