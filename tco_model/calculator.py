@@ -5,10 +5,11 @@ This module implements the core TCO calculation engine that orchestrates the cal
 of all cost components and produces the final TCO results.
 """
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 import pandas as pd
 import numpy as np
 import numpy_financial as npf
+from datetime import date
 
 from tco_model.models import (
     ScenarioInput,
@@ -31,6 +32,13 @@ from tco_model.costs import (
 from tco_model.strategies import (
     get_energy_consumption_strategy,
     get_maintenance_strategy,
+    get_residual_value_strategy,
+    get_battery_replacement_strategy,
+    get_infrastructure_strategy,
+    get_financing_strategy,
+    get_insurance_strategy,
+    get_registration_strategy,
+    get_carbon_tax_strategy,
 )
 
 
@@ -51,20 +59,37 @@ class TCOCalculator:
             TCOOutput: The calculated TCO results.
         """
         # Extract key parameters
-        years = range(scenario.operational.analysis_period)
-        discount_rate = scenario.economic.discount_rate
+        analysis_period = scenario.economic.analysis_period_years
+        discount_rate = scenario.economic.discount_rate_real
+        annual_distance = scenario.operational.annual_distance_km
+        base_year = date.today().year
         
         # Initialize dataframe to store annual costs
+        # Using a DataFrame for efficient year-by-year calculations with vectorization benefits
+        years = range(analysis_period)
         annual_costs_df = pd.DataFrame(index=years)
+        annual_costs_df['year'] = years
+        annual_costs_df['calendar_year'] = [base_year + year for year in years]
         
-        # Get appropriate strategies based on vehicle type
+        # Get appropriate strategies based on vehicle type and characteristics
         energy_strategy = get_energy_consumption_strategy(scenario.vehicle.type)
         maintenance_strategy = get_maintenance_strategy(scenario.vehicle.type)
+        residual_value_strategy = get_residual_value_strategy()
+        infrastructure_strategy = get_infrastructure_strategy(scenario.vehicle.type)
+        financing_strategy = get_financing_strategy(scenario.financing.method)
+        insurance_strategy = get_insurance_strategy()
+        registration_strategy = get_registration_strategy()
+        carbon_tax_strategy = get_carbon_tax_strategy()
+        
+        # For BETs, get battery replacement strategy
+        battery_replacement_strategy = None
+        if scenario.vehicle.type == VehicleType.BATTERY_ELECTRIC:
+            battery_replacement_strategy = get_battery_replacement_strategy()
         
         # Calculate individual cost components for each year
         for year in years:
             # Calculate acquisition costs
-            annual_costs_df.loc[year, 'acquisition'] = calculate_acquisition_costs(
+            annual_costs_df.loc[year, 'acquisition'] = financing_strategy.calculate_costs(
                 scenario, year
             )
             
@@ -79,49 +104,118 @@ class TCOCalculator:
             )
             
             # Calculate infrastructure costs (mainly for BETs)
-            annual_costs_df.loc[year, 'infrastructure'] = calculate_infrastructure_costs(
+            annual_costs_df.loc[year, 'infrastructure'] = infrastructure_strategy.calculate_costs(
                 scenario, year
             )
             
             # Calculate battery replacement costs (only for BETs)
-            annual_costs_df.loc[year, 'battery_replacement'] = calculate_battery_replacement_costs(
-                scenario, year
-            ) if scenario.vehicle.type == VehicleType.BATTERY_ELECTRIC else 0
+            annual_costs_df.loc[year, 'battery_replacement'] = (
+                battery_replacement_strategy.calculate_costs(scenario, year)
+                if battery_replacement_strategy and scenario.vehicle.type == VehicleType.BATTERY_ELECTRIC
+                else 0
+            )
             
-            # Calculate insurance and registration costs
-            annual_costs_df.loc[year, 'insurance_registration'] = calculate_insurance_registration_costs(
+            # Calculate insurance costs
+            annual_costs_df.loc[year, 'insurance'] = insurance_strategy.calculate_costs(
                 scenario, year
             )
             
-            # Calculate taxes and levies
-            annual_costs_df.loc[year, 'taxes_levies'] = calculate_taxes_levies(
+            # Calculate registration costs
+            annual_costs_df.loc[year, 'registration'] = registration_strategy.calculate_costs(
+                scenario, year
+            )
+            
+            # Calculate carbon tax
+            annual_costs_df.loc[year, 'carbon_tax'] = carbon_tax_strategy.calculate_costs(
+                scenario, year
+            )
+            
+            # Calculate other taxes and levies (simplified, using direct function call)
+            annual_costs_df.loc[year, 'other_taxes'] = calculate_taxes_levies(
                 scenario, year
             )
             
             # Calculate residual value (only applied in the final year)
-            annual_costs_df.loc[year, 'residual_value'] = calculate_residual_value(
-                scenario, year
-            ) if year == scenario.operational.analysis_period - 1 else 0
+            annual_costs_df.loc[year, 'residual_value'] = (
+                residual_value_strategy.calculate_residual_value(scenario, year)
+                if year == analysis_period - 1
+                else 0
+            )
         
         # Calculate annual totals
-        annual_costs_df['total'] = annual_costs_df.sum(axis=1)
+        # This vectorized operation efficiently calculates the sum for each row
+        annual_costs_df['total'] = annual_costs_df[[
+            'acquisition', 'energy', 'maintenance', 'infrastructure',
+            'battery_replacement', 'insurance', 'registration',
+            'carbon_tax', 'other_taxes', 'residual_value'
+        ]].sum(axis=1)
         
-        # Calculate NPV for each cost component
+        # Calculate NPV for each cost component using numpy-financial
+        # Extract cost streams for NPV calculation
+        cost_components = [
+            'acquisition', 'energy', 'maintenance', 'infrastructure',
+            'battery_replacement', 'insurance', 'registration',
+            'carbon_tax', 'other_taxes', 'residual_value', 'total'
+        ]
+        
         npv_costs = {}
-        for column in annual_costs_df.columns:
-            npv_costs[column] = npf.npv(discount_rate, annual_costs_df[column])
+        for component in cost_components:
+            cash_flows = annual_costs_df[component].values
+            npv_costs[component] = npf.npv(discount_rate, cash_flows)
         
-        # Calculate the TCO per kilometer
-        total_km = scenario.operational.annual_distance * scenario.operational.analysis_period
-        lcod = npv_costs['total'] / total_km if total_km > 0 else 0
+        # Calculate nominal total (sum of all costs without discounting)
+        total_nominal_cost = annual_costs_df['total'].sum()
+        
+        # Calculate levelized cost of driving (LCOD) per km
+        total_distance_km = annual_distance * analysis_period
+        lcod_per_km = npv_costs['total'] / total_distance_km if total_distance_km > 0 else 0
+        
+        # Convert annual costs dataframe to list of AnnualCosts objects
+        annual_costs_list = []
+        for _, row in annual_costs_df.iterrows():
+            annual_costs_list.append(
+                AnnualCosts(
+                    year=int(row['year']),
+                    calendar_year=int(row['calendar_year']),
+                    acquisition=float(row['acquisition']),
+                    energy=float(row['energy']),
+                    maintenance=float(row['maintenance']),
+                    infrastructure=float(row['infrastructure']),
+                    battery_replacement=float(row['battery_replacement']),
+                    insurance=float(row['insurance']),
+                    registration=float(row['registration']),
+                    carbon_tax=float(row['carbon_tax']),
+                    other_taxes=float(row['other_taxes']),
+                    residual_value=float(row['residual_value'])
+                )
+            )
+        
+        # Create NPVCosts object
+        npv_costs_obj = NPVCosts(
+            acquisition=npv_costs['acquisition'],
+            energy=npv_costs['energy'],
+            maintenance=npv_costs['maintenance'],
+            infrastructure=npv_costs['infrastructure'],
+            battery_replacement=npv_costs['battery_replacement'],
+            insurance=npv_costs['insurance'],
+            registration=npv_costs['registration'],
+            carbon_tax=npv_costs['carbon_tax'],
+            other_taxes=npv_costs['other_taxes'],
+            residual_value=npv_costs['residual_value']
+        )
         
         # Create and return the TCO output
         return TCOOutput(
-            annual_costs=AnnualCosts(**annual_costs_df.to_dict()),
-            npv_costs=NPVCosts(**npv_costs),
-            total_tco=npv_costs['total'],
-            lcod=lcod,
-            scenario=scenario,
+            scenario_name=scenario.scenario_name,
+            vehicle_name=scenario.vehicle.name,
+            vehicle_type=scenario.vehicle.type,
+            analysis_period_years=analysis_period,
+            total_distance_km=total_distance_km,
+            annual_costs=annual_costs_list,
+            npv_costs=npv_costs_obj,
+            total_nominal_cost=total_nominal_cost,
+            npv_total=npv_costs['total'],
+            lcod_per_km=lcod_per_km,
         )
     
     def compare_results(self, result1: TCOOutput, result2: TCOOutput) -> ComparisonResult:
@@ -135,23 +229,64 @@ class TCOCalculator:
         Returns:
             ComparisonResult: The comparison between the two TCO results
         """
-        # Calculate differences
-        tco_difference = result2.total_tco - result1.total_tco
-        tco_percentage = (tco_difference / result1.total_tco) * 100 if result1.total_tco != 0 else 0
-        lcod_difference = result2.lcod - result1.lcod
+        # Calculate NPV difference
+        npv_difference = result2.npv_total - result1.npv_total
         
-        # Calculate component differences
-        component_differences = {}
-        for component in result1.npv_costs.__dict__.keys():
-            component_differences[component] = (
-                getattr(result2.npv_costs, component) - getattr(result1.npv_costs, component)
-            )
+        # Calculate NPV difference percentage
+        npv_difference_percentage = (
+            (npv_difference / abs(result1.npv_total)) * 100 
+            if result1.npv_total != 0 else 0
+        )
+        
+        # Calculate LCOD difference
+        lcod_difference = result2.lcod_per_km - result1.lcod_per_km
+        
+        # Calculate LCOD difference percentage
+        lcod_difference_percentage = (
+            (lcod_difference / abs(result1.lcod_per_km)) * 100
+            if result1.lcod_per_km != 0 else 0
+        )
+        
+        # Calculate payback year (if applicable)
+        payback_year = self._calculate_payback_year(result1, result2)
         
         # Return comparison result
         return ComparisonResult(
-            tco_difference=tco_difference,
-            tco_percentage=tco_percentage,
+            scenario_1=result1,
+            scenario_2=result2,
+            npv_difference=npv_difference,
+            npv_difference_percentage=npv_difference_percentage,
             lcod_difference=lcod_difference,
-            component_differences=component_differences,
-            cheaper_option=1 if tco_difference > 0 else 2,
-        ) 
+            lcod_difference_percentage=lcod_difference_percentage,
+            payback_year=payback_year
+        )
+    
+    def _calculate_payback_year(self, result1: TCOOutput, result2: TCOOutput) -> Optional[int]:
+        """
+        Calculate the payback year between two scenarios.
+        
+        The payback year is the year in which the cumulative costs of scenario 1
+        become less than the cumulative costs of scenario 2.
+        
+        Args:
+            result1: First TCO result
+            result2: Second TCO result
+            
+        Returns:
+            Optional[int]: The payback year, or None if there is no payback
+        """
+        # Get annual costs
+        costs1 = [cost.total for cost in result1.annual_costs]
+        costs2 = [cost.total for cost in result2.annual_costs]
+        
+        # Calculate cumulative costs
+        cumulative1 = np.cumsum(costs1)
+        cumulative2 = np.cumsum(costs2)
+        
+        # Find the year where cumulative costs of scenario 1 become less than scenario 2
+        for year, (cum1, cum2) in enumerate(zip(cumulative1, cumulative2)):
+            if cum1 < cum2:
+                return year
+        
+        # No payback within the analysis period
+        return None 

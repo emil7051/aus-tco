@@ -8,7 +8,8 @@ providing strong typing, validation, and structure to the data.
 from datetime import date
 from enum import Enum
 from typing import Dict, List, Literal, Optional, Tuple, Union
-from pydantic import BaseModel, BaseSettings, Field, validator, root_validator
+from pydantic import BaseModel, Field, validator, root_validator
+from pydantic_settings import BaseSettings
 import numpy as np
 
 
@@ -63,7 +64,7 @@ class RangeValue(BaseModel):
     default: Optional[float] = None
     average: Optional[float] = None
     
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def set_default_if_missing(cls, values):
         """Set default to average of min and max if not provided."""
         if values.get('default') is None and 'min' in values and 'max' in values:
@@ -287,7 +288,7 @@ class MaintenanceParameters(BaseModel):
     scheduled_maintenance_interval_km: float = Field(..., gt=0, description="Interval for scheduled maintenance in kilometers")
     major_service_interval_km: float = Field(..., gt=0, description="Interval for major services in kilometers")
     
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def set_default_fixed_cost(cls, values):
         """Set default fixed cost to average of min and max if not provided."""
         if values.get('annual_fixed_default') is None and 'annual_fixed_min' in values and 'annual_fixed_max' in values:
@@ -473,16 +474,13 @@ class OperationalParameters(BaseModel):
     is_urban_operation: bool = Field(False, description="Whether the vehicle operates in urban environments")
     average_load_factor: float = Field(0.8, ge=0, le=1, description="Average load factor (0-1, where 1 is full load)")
     
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def set_daily_distance(cls, values):
-        """Calculate daily distance if not provided."""
-        annual = values.get('annual_distance_km')
-        days = values.get('operating_days_per_year')
-        daily = values.get('daily_distance_km')
-        
-        if annual is not None and days is not None and daily is None:
-            values['daily_distance_km'] = annual / days
-        
+        """Calculate daily distance from annual distance if not provided."""
+        if values.get('daily_distance_km') is None and 'annual_distance_km' in values and 'operating_days_per_year' in values:
+            operating_days = values.get('operating_days_per_year')
+            if operating_days > 0:
+                values['daily_distance_km'] = values['annual_distance_km'] / operating_days
         return values
 
 

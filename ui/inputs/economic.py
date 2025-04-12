@@ -1,29 +1,69 @@
 """
 Economic Input Module
 
-This module renders the UI components for economic parameter inputs.
+This module renders the UI components for economic parameter inputs,
+including discount rates, inflation, energy prices, and carbon tax.
 """
 
 import streamlit as st
 from typing import Dict, Any, Optional
 
-from tco_model.models import FinancingMethod, ElectricityRateType, DieselPriceScenario
-from utils.helpers import get_safe_state_value, set_safe_state_value
+from tco_model.models import ElectricityRateType, DieselPriceScenario
+from utils.helpers import (
+    get_safe_state_value, 
+    set_safe_state_value, 
+    initialize_nested_state,
+    format_currency,
+    format_percentage
+)
 
 
-def render_economic_inputs(vehicle_number: int):
+# Constants for state keys
+STATE_DISCOUNT_RATE = "discount_rate_real"
+STATE_INFLATION_RATE = "inflation_rate"
+STATE_ANALYSIS_PERIOD = "analysis_period_years"
+STATE_ELECTRICITY_PRICE_TYPE = "electricity_price_type"
+STATE_DIESEL_PRICE_SCENARIO = "diesel_price_scenario"
+STATE_CARBON_TAX_RATE = "carbon_tax_rate_aud_per_tonne"
+STATE_CARBON_TAX_INCREASE = "carbon_tax_annual_increase_rate"
+
+
+def render_economic_inputs(vehicle_number: int) -> None:
     """
     Render the UI components for economic parameters.
+    
+    This function renders input fields for economic parameters such as
+    discount rate, inflation, energy prices, and carbon tax.
     
     Args:
         vehicle_number: The vehicle number (1 or 2)
     """
-    state_prefix = f"vehicle_{vehicle_number}_input.economic"
+    state_prefix = f"vehicle_{vehicle_number}_input"
     
-    # Create a form for the economic parameters
-    with st.form(key=f"economic_{vehicle_number}_form"):
-        st.subheader("Economic Parameters")
-        
+    # Create tabs for different economic parameter categories
+    tabs = st.tabs(["General", "Energy Prices", "Carbon Tax"])
+    
+    # General economic parameters tab
+    with tabs[0]:
+        render_general_economic_parameters(state_prefix)
+    
+    # Energy prices tab
+    with tabs[1]:
+        render_energy_prices(state_prefix, vehicle_number)
+    
+    # Carbon tax tab
+    with tabs[2]:
+        render_carbon_tax(state_prefix)
+
+
+def render_general_economic_parameters(state_prefix: str) -> None:
+    """
+    Render general economic parameters like discount rate and inflation.
+    
+    Args:
+        state_prefix: The state prefix for session state access
+    """
+    with st.expander("General Economic Parameters", expanded=True):
         # Discount rate and inflation
         col1, col2 = st.columns(2)
         
@@ -31,205 +71,279 @@ def render_economic_inputs(vehicle_number: int):
             discount_rate = st.number_input(
                 "Discount Rate (%)",
                 min_value=0.0,
-                max_value=100.0,
-                value=get_safe_state_value(f"{state_prefix}.discount_rate", 7.0),
+                max_value=20.0,
+                value=float(get_safe_state_value(f"{state_prefix}.economic.{STATE_DISCOUNT_RATE}", 0.07)) * 100,
                 format="%.1f",
-                key=f"{state_prefix}.discount_rate",
+                key=f"{state_prefix}.economic.{STATE_DISCOUNT_RATE}_input",
+                help="Real discount rate used for NPV calculations (excluding inflation)"
             )
+            set_safe_state_value(f"{state_prefix}.economic.{STATE_DISCOUNT_RATE}", discount_rate / 100.0)
         
         with col2:
             inflation_rate = st.number_input(
                 "Inflation Rate (%)",
                 min_value=0.0,
-                max_value=100.0,
-                value=get_safe_state_value(f"{state_prefix}.inflation_rate", 2.5),
+                max_value=15.0,
+                value=float(get_safe_state_value(f"{state_prefix}.economic.{STATE_INFLATION_RATE}", 0.025)) * 100,
                 format="%.1f",
-                key=f"{state_prefix}.inflation_rate",
+                key=f"{state_prefix}.economic.{STATE_INFLATION_RATE}_input",
+                help="Annual inflation rate for cost adjustments"
             )
+            set_safe_state_value(f"{state_prefix}.economic.{STATE_INFLATION_RATE}", inflation_rate / 100.0)
         
-        # Financing options
-        st.subheader("Financing Options")
-        
-        # Financing method
-        financing_method = st.selectbox(
-            "Financing Method",
-            options=[fm.value for fm in FinancingMethod],
-            index=0,
-            key=f"{state_prefix}.financing.method",
+        # Analysis period
+        analysis_period = st.slider(
+            "Analysis Period (years)",
+            min_value=1,
+            max_value=25,
+            value=int(get_safe_state_value(f"{state_prefix}.economic.{STATE_ANALYSIS_PERIOD}", 15)),
+            key=f"{state_prefix}.economic.{STATE_ANALYSIS_PERIOD}_input",
+            help="Period over which to calculate TCO (should match or be less than vehicle life)"
         )
+        set_safe_state_value(f"{state_prefix}.economic.{STATE_ANALYSIS_PERIOD}", analysis_period)
         
-        # Conditional financing parameters
-        if financing_method == FinancingMethod.LOAN.value:
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                loan_term = st.slider(
-                    "Loan Term (years)",
-                    min_value=1,
-                    max_value=10,
-                    value=get_safe_state_value(f"{state_prefix}.financing.loan_term", 5),
-                    key=f"{state_prefix}.financing.loan_term",
-                )
-            
-            with col2:
-                interest_rate = st.number_input(
-                    "Interest Rate (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=get_safe_state_value(f"{state_prefix}.financing.interest_rate", 5.0),
-                    format="%.1f",
-                    key=f"{state_prefix}.financing.interest_rate",
-                )
-            
-            with col3:
-                deposit_percentage = st.number_input(
-                    "Deposit (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=get_safe_state_value(f"{state_prefix}.financing.deposit_percentage", 20.0),
-                    format="%.1f",
-                    key=f"{state_prefix}.financing.deposit_percentage",
-                )
+        # Derived metrics
+        st.subheader("Derived Metrics")
+        col1, col2 = st.columns(2)
         
-        # Energy prices
-        st.subheader("Energy Prices")
+        # Calculate nominal discount rate
+        nominal_rate = (1 + discount_rate/100) * (1 + inflation_rate/100) - 1
         
+        with col1:
+            st.metric("Nominal Discount Rate", format_percentage(nominal_rate))
+        
+        with col2:
+            st.metric("Present Value Factor (Year 15)", f"{(1 / (1 + discount_rate/100) ** 15):.3f}")
+
+
+def render_energy_prices(state_prefix: str, vehicle_number: int) -> None:
+    """
+    Render energy price parameters for electricity and diesel.
+    
+    Args:
+        state_prefix: The state prefix for session state access
+        vehicle_number: The vehicle number (1 or 2)
+    """
+    with st.expander("Energy Prices", expanded=True):
         # Different tabs for different energy types
-        energy_tabs = st.tabs(["Electricity", "Diesel", "Carbon Tax"])
+        energy_tabs = st.tabs(["Electricity", "Diesel"])
         
         # Electricity tab
         with energy_tabs[0]:
+            # Electricity rate type
             electricity_rate_type = st.selectbox(
                 "Electricity Rate Type",
                 options=[ert.value for ert in ElectricityRateType],
                 index=0,
-                key=f"{state_prefix}.energy.electricity_rate_type",
+                key=f"{state_prefix}.economic.{STATE_ELECTRICITY_PRICE_TYPE}_input",
+                help="Type of electricity tariff to apply"
             )
+            set_safe_state_value(f"{state_prefix}.economic.{STATE_ELECTRICITY_PRICE_TYPE}", electricity_rate_type)
             
-            electricity_price = st.number_input(
-                "Electricity Price (AUD/kWh)",
-                min_value=0.0,
-                value=get_safe_state_value(f"{state_prefix}.energy.electricity_price", 0.25),
-                format="%.3f",
-                key=f"{state_prefix}.energy.electricity_price",
-            )
-            
-            if electricity_rate_type == ElectricityRateType.TIME_OF_USE.value:
-                # Additional parameters for time-of-use pricing
+            # Electricity pricing based on rate type
+            if electricity_rate_type == ElectricityRateType.AVERAGE_FLAT_RATE.value:
+                electricity_price = st.number_input(
+                    "Average Electricity Price (AUD/kWh)",
+                    min_value=0.05,
+                    max_value=0.80,
+                    value=float(get_safe_state_value(f"{state_prefix}.economic.energy.electricity_price", 0.25)),
+                    format="%.3f",
+                    key=f"{state_prefix}.economic.energy.electricity_price_input",
+                    help="Average price per kWh across all time periods"
+                )
+                set_safe_state_value(f"{state_prefix}.economic.energy.electricity_price", electricity_price)
+                
+                # Simple annual electricity cost calculation
+                annual_distance = get_safe_state_value(f"{state_prefix}.operational.annual_distance_km", 100000)
+                energy_consumption = get_safe_state_value(f"{state_prefix}.vehicle.energy_consumption.base_rate", 1.45)
+                
+                # Only show BET energy costs for vehicle 1 if it's a BET
+                if vehicle_number == 1 and get_safe_state_value(f"{state_prefix}.vehicle.type") == "battery_electric":
+                    annual_consumption = annual_distance * energy_consumption
+                    st.metric("Estimated Annual Electricity Cost", 
+                             format_currency(annual_consumption * electricity_price))
+                
+            elif electricity_rate_type == ElectricityRateType.OFF_PEAK_TOU.value:
                 col1, col2 = st.columns(2)
                 
                 with col1:
                     off_peak_price = st.number_input(
                         "Off-Peak Price (AUD/kWh)",
-                        min_value=0.0,
-                        value=get_safe_state_value(f"{state_prefix}.energy.off_peak_price", 0.15),
+                        min_value=0.05,
+                        max_value=0.50,
+                        value=float(get_safe_state_value(f"{state_prefix}.economic.energy.off_peak_price", 0.15)),
                         format="%.3f",
-                        key=f"{state_prefix}.energy.off_peak_price",
+                        key=f"{state_prefix}.economic.energy.off_peak_price_input",
+                        help="Price per kWh during off-peak hours"
                     )
+                    set_safe_state_value(f"{state_prefix}.economic.energy.off_peak_price", off_peak_price)
                 
                 with col2:
-                    peak_price = st.number_input(
-                        "Peak Price (AUD/kWh)",
-                        min_value=0.0,
-                        value=get_safe_state_value(f"{state_prefix}.energy.peak_price", 0.35),
-                        format="%.3f",
-                        key=f"{state_prefix}.energy.peak_price",
+                    off_peak_percentage = st.slider(
+                        "Off-Peak Charging (%)",
+                        min_value=0,
+                        max_value=100,
+                        value=int(get_safe_state_value(f"{state_prefix}.economic.energy.off_peak_percentage", 80)),
+                        key=f"{state_prefix}.economic.energy.off_peak_percentage_input",
+                        help="Percentage of charging done during off-peak hours"
                     )
+                    set_safe_state_value(f"{state_prefix}.economic.energy.off_peak_percentage", off_peak_percentage)
                 
-                # Demand charges
-                demand_charge = st.number_input(
-                    "Demand Charge (AUD/kVA/month)",
-                    min_value=0.0,
-                    value=get_safe_state_value(f"{state_prefix}.energy.demand_charge", 15.0),
-                    format="%.2f",
-                    key=f"{state_prefix}.energy.demand_charge",
+                peak_price = st.number_input(
+                    "Peak Price (AUD/kWh)",
+                    min_value=0.10,
+                    max_value=1.00,
+                    value=float(get_safe_state_value(f"{state_prefix}.economic.energy.peak_price", 0.35)),
+                    format="%.3f",
+                    key=f"{state_prefix}.economic.energy.peak_price_input",
+                    help="Price per kWh during peak hours"
                 )
+                set_safe_state_value(f"{state_prefix}.economic.energy.peak_price", peak_price)
+                
+                # Calculate average price
+                average_price = (off_peak_price * off_peak_percentage/100) + (peak_price * (100-off_peak_percentage)/100)
+                st.metric("Effective Average Price", f"${average_price:.3f}/kWh")
+            
+            # Demand charges
+            demand_charges = st.checkbox(
+                "Apply Demand Charges",
+                value=bool(get_safe_state_value(f"{state_prefix}.economic.energy.demand_charges_enabled", False)),
+                key=f"{state_prefix}.economic.energy.demand_charges_enabled_input",
+                help="Whether to apply demand charges based on maximum power draw"
+            )
+            set_safe_state_value(f"{state_prefix}.economic.energy.demand_charges_enabled", demand_charges)
+            
+            if demand_charges:
+                demand_charge_rate = st.number_input(
+                    "Demand Charge Rate (AUD/kW/month)",
+                    min_value=0.0,
+                    max_value=50.0,
+                    value=float(get_safe_state_value(f"{state_prefix}.economic.energy.demand_charge_rate", 15.0)),
+                    format="%.2f",
+                    key=f"{state_prefix}.economic.energy.demand_charge_rate_input",
+                    help="Monthly charge per kW of maximum power demand"
+                )
+                set_safe_state_value(f"{state_prefix}.economic.energy.demand_charge_rate", demand_charge_rate)
         
         # Diesel tab
         with energy_tabs[1]:
+            # Diesel price scenario
             diesel_price_scenario = st.selectbox(
                 "Diesel Price Scenario",
                 options=[dps.value for dps in DieselPriceScenario],
-                index=0,
-                key=f"{state_prefix}.energy.diesel_price_scenario",
+                index=1,  # Medium increase default
+                key=f"{state_prefix}.economic.{STATE_DIESEL_PRICE_SCENARIO}_input",
+                help="Scenario for future diesel price projections"
             )
+            set_safe_state_value(f"{state_prefix}.economic.{STATE_DIESEL_PRICE_SCENARIO}", diesel_price_scenario)
             
+            # Current diesel price
             diesel_price = st.number_input(
-                "Diesel Price (AUD/L)",
-                min_value=0.0,
-                value=get_safe_state_value(f"{state_prefix}.energy.diesel_price", 1.50),
+                "Current Diesel Price (AUD/L)",
+                min_value=0.50,
+                max_value=3.00,
+                value=float(get_safe_state_value(f"{state_prefix}.economic.energy.diesel_price", 1.80)),
                 format="%.2f",
-                key=f"{state_prefix}.energy.diesel_price",
+                key=f"{state_prefix}.economic.energy.diesel_price_input",
+                help="Current price per liter of diesel fuel"
             )
+            set_safe_state_value(f"{state_prefix}.economic.energy.diesel_price", diesel_price)
+            
+            # Annual price change
+            annual_change = {
+                DieselPriceScenario.LOW_STABLE.value: 0.0,
+                DieselPriceScenario.MEDIUM_INCREASE.value: 2.5,
+                DieselPriceScenario.HIGH_INCREASE.value: 5.0
+            }.get(diesel_price_scenario, 2.5)
             
             diesel_price_annual_change = st.slider(
                 "Annual Price Change (%)",
-                min_value=-10.0,
+                min_value=-5.0,
                 max_value=10.0,
-                value=get_safe_state_value(f"{state_prefix}.energy.diesel_price_annual_change", 2.0),
+                value=float(get_safe_state_value(f"{state_prefix}.economic.energy.diesel_price_annual_change", annual_change)),
                 format="%.1f",
-                key=f"{state_prefix}.energy.diesel_price_annual_change",
+                key=f"{state_prefix}.economic.energy.diesel_price_annual_change_input",
+                help="Annual percentage change in diesel price (can be positive or negative)"
             )
-        
-        # Carbon tax tab
-        with energy_tabs[2]:
-            carbon_tax = st.checkbox(
-                "Apply Carbon Tax",
-                value=get_safe_state_value(f"{state_prefix}.carbon_tax.enabled", False),
-                key=f"{state_prefix}.carbon_tax.enabled",
-            )
+            set_safe_state_value(f"{state_prefix}.economic.energy.diesel_price_annual_change", diesel_price_annual_change / 100.0)
             
-            if carbon_tax:
+            # Only show diesel costs for vehicle 2 if it's a diesel vehicle
+            if vehicle_number == 2 and get_safe_state_value(f"{state_prefix}.vehicle.type") == "diesel":
+                # Simple annual diesel cost calculation
+                annual_distance = get_safe_state_value(f"{state_prefix}.operational.annual_distance_km", 100000)
+                fuel_consumption = get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.base_rate", 0.53)
+                
+                annual_consumption = annual_distance * fuel_consumption
+                st.metric("Estimated Annual Diesel Cost", 
+                         format_currency(annual_consumption * diesel_price))
+            
+            # Projected prices
+            st.subheader("Projected Diesel Prices")
+            years = [1, 5, 10, 15]
+            prices = [diesel_price * (1 + diesel_price_annual_change/100) ** year for year in years]
+            
+            cols = st.columns(4)
+            for i, (year, price) in enumerate(zip(years, prices)):
+                with cols[i]:
+                    st.metric(f"Year {year}", f"${price:.2f}/L")
+
+
+def render_carbon_tax(state_prefix: str) -> None:
+    """
+    Render carbon tax parameters.
+    
+    Args:
+        state_prefix: The state prefix for session state access
+    """
+    with st.expander("Carbon Tax", expanded=True):
+        carbon_tax_enabled = st.checkbox(
+            "Apply Carbon Tax",
+            value=bool(get_safe_state_value(f"{state_prefix}.economic.carbon_tax.enabled", False)),
+            key=f"{state_prefix}.economic.carbon_tax.enabled_input",
+            help="Whether to apply a carbon tax in the analysis"
+        )
+        set_safe_state_value(f"{state_prefix}.economic.carbon_tax.enabled", carbon_tax_enabled)
+        
+        if carbon_tax_enabled:
+            col1, col2 = st.columns(2)
+            
+            with col1:
                 carbon_tax_rate = st.number_input(
                     "Carbon Tax Rate (AUD/tonne CO2)",
                     min_value=0.0,
-                    value=get_safe_state_value(f"{state_prefix}.carbon_tax.rate", 25.0),
+                    max_value=200.0,
+                    value=float(get_safe_state_value(f"{state_prefix}.economic.{STATE_CARBON_TAX_RATE}", 30.0)),
                     format="%.2f",
-                    key=f"{state_prefix}.carbon_tax.rate",
+                    key=f"{state_prefix}.economic.{STATE_CARBON_TAX_RATE}_input",
+                    help="Tax rate per tonne of CO2 emissions"
                 )
-                
-                carbon_tax_annual_change = st.slider(
-                    "Annual Rate Change (%)",
-                    min_value=-10.0,
+                set_safe_state_value(f"{state_prefix}.economic.{STATE_CARBON_TAX_RATE}", carbon_tax_rate)
+            
+            with col2:
+                annual_increase = st.slider(
+                    "Annual Rate Increase (%)",
+                    min_value=0.0,
                     max_value=10.0,
-                    value=get_safe_state_value(f"{state_prefix}.carbon_tax.annual_change", 5.0),
+                    value=float(get_safe_state_value(f"{state_prefix}.economic.{STATE_CARBON_TAX_INCREASE}", 0.05)) * 100,
                     format="%.1f",
-                    key=f"{state_prefix}.carbon_tax.annual_change",
+                    key=f"{state_prefix}.economic.{STATE_CARBON_TAX_INCREASE}_input",
+                    help="Annual percentage increase in carbon tax rate"
                 )
-        
-        # Submit button
-        submitted = st.form_submit_button("Update Economic Parameters")
-        
-        if submitted:
-            # Update session state with the form values
-            set_safe_state_value(f"{state_prefix}.discount_rate", discount_rate / 100.0)  # Convert to decimal
-            set_safe_state_value(f"{state_prefix}.inflation_rate", inflation_rate / 100.0)  # Convert to decimal
+                set_safe_state_value(f"{state_prefix}.economic.{STATE_CARBON_TAX_INCREASE}", annual_increase / 100.0)
             
-            # Financing
-            set_safe_state_value(f"{state_prefix}.financing.method", financing_method)
-            if financing_method == FinancingMethod.LOAN.value:
-                set_safe_state_value(f"{state_prefix}.financing.loan_term", loan_term)
-                set_safe_state_value(f"{state_prefix}.financing.interest_rate", interest_rate / 100.0)  # Convert to decimal
-                set_safe_state_value(f"{state_prefix}.financing.deposit_percentage", deposit_percentage / 100.0)  # Convert to decimal
+            # Projected carbon tax rates
+            st.subheader("Projected Carbon Tax Rates")
+            years = [1, 5, 10, 15]
+            rates = [carbon_tax_rate * (1 + annual_increase/100) ** year for year in years]
             
-            # Energy prices
-            # Electricity
-            set_safe_state_value(f"{state_prefix}.energy.electricity_rate_type", electricity_rate_type)
-            set_safe_state_value(f"{state_prefix}.energy.electricity_price", electricity_price)
-            if electricity_rate_type == ElectricityRateType.TIME_OF_USE.value:
-                set_safe_state_value(f"{state_prefix}.energy.off_peak_price", off_peak_price)
-                set_safe_state_value(f"{state_prefix}.energy.peak_price", peak_price)
-                set_safe_state_value(f"{state_prefix}.energy.demand_charge", demand_charge)
+            cols = st.columns(4)
+            for i, (year, rate) in enumerate(zip(years, rates)):
+                with cols[i]:
+                    st.metric(f"Year {year}", f"${rate:.2f}/tonne")
             
-            # Diesel
-            set_safe_state_value(f"{state_prefix}.energy.diesel_price_scenario", diesel_price_scenario)
-            set_safe_state_value(f"{state_prefix}.energy.diesel_price", diesel_price)
-            set_safe_state_value(f"{state_prefix}.energy.diesel_price_annual_change", diesel_price_annual_change / 100.0)  # Convert to decimal
-            
-            # Carbon tax
-            set_safe_state_value(f"{state_prefix}.carbon_tax.enabled", carbon_tax)
-            if carbon_tax:
-                set_safe_state_value(f"{state_prefix}.carbon_tax.rate", carbon_tax_rate)
-                set_safe_state_value(f"{state_prefix}.carbon_tax.annual_change", carbon_tax_annual_change / 100.0)  # Convert to decimal
-            
-            st.success("Economic parameters updated!") 
+            # Impact information
+            st.info("""
+            Carbon tax primarily affects vehicles with direct emissions (diesel).
+            Battery electric vehicles may be indirectly affected through electricity generation emissions,
+            depending on the grid's generation mix.
+            """) 

@@ -463,12 +463,22 @@ def get_safe_state_value(key: str, default: Any = None) -> Any:
     """
     Safely access a possibly nested value in Streamlit session state.
     
+    This function allows accessing deeply nested values in the session state
+    using dot notation. If any part of the path doesn't exist, it returns
+    the default value.
+    
     Args:
-        key: Dot-separated path to the value (e.g., "vehicle_1.parameters.purchase_price")
+        key: Dot-separated path to the value (e.g., "vehicle_1_input.vehicle.purchase_price")
         default: Default value to return if the key doesn't exist
         
     Returns:
         Value from session state or default
+        
+    Examples:
+        >>> get_safe_state_value("vehicle_1_input.vehicle.purchase_price", 0)
+        400000
+        >>> get_safe_state_value("nonexistent_key", "default_value")
+        'default_value'
     """
     if '.' not in key:
         return st.session_state.get(key, default)
@@ -477,7 +487,11 @@ def get_safe_state_value(key: str, default: Any = None) -> Any:
     current = st.session_state
     
     for part in parts:
-        if isinstance(current, dict) and part in current:
+        if hasattr(current, part):
+            # Handle Pydantic models and other objects with attributes
+            current = getattr(current, part)
+        elif isinstance(current, dict) and part in current:
+            # Handle dictionary access
             current = current[part]
         else:
             return default
@@ -485,31 +499,217 @@ def get_safe_state_value(key: str, default: Any = None) -> Any:
     return current
 
 
-def set_safe_state_value(key: str, value: Any) -> None:
+def set_safe_state_value(key: str, value: Any, create_missing: bool = True) -> bool:
     """
     Safely set a possibly nested value in Streamlit session state.
     
+    This function allows setting deeply nested values in the session state
+    using dot notation. It can create missing intermediate dictionaries
+    if create_missing is True.
+    
     Args:
-        key: Dot-separated path to the value (e.g., "vehicle_1.parameters.purchase_price")
+        key: Dot-separated path to the value (e.g., "vehicle_1_input.operational.annual_distance_km")
         value: Value to set
+        create_missing: Whether to create missing intermediate dictionaries
+        
+    Returns:
+        bool: True if the value was set successfully, False otherwise
+        
+    Examples:
+        >>> set_safe_state_value("vehicle_1_input.operational.annual_distance_km", 120000)
+        True
     """
     if '.' not in key:
         st.session_state[key] = value
-        return
+        return True
     
     parts = key.split('.')
     last_part = parts.pop()
     
+    # Start with session_state
     current = st.session_state
+    parent_path = ""
     
     # Navigate to the parent object
     for part in parts:
-        if part not in current:
+        parent_path = f"{parent_path}.{part}" if parent_path else part
+        
+        if hasattr(current, part):
+            # Handle Pydantic models and other objects with attributes
+            current = getattr(current, part)
+        elif isinstance(current, dict) and part in current:
+            # Handle dictionary access
+            current = current[part]
+        elif create_missing and isinstance(current, dict):
+            # Create missing dictionary
             current[part] = {}
-        current = current[part]
+            current = current[part]
+        else:
+            # Can't navigate further or create path
+            return False
     
-    # Set the value
-    current[last_part] = value
+    # Set the value - handle both attribute and dict access
+    try:
+        if hasattr(current, last_part) or not isinstance(current, dict):
+            # Handle object with attributes
+            setattr(current, last_part, value)
+        else:
+            # Handle dictionary
+            current[last_part] = value
+        return True
+    except (AttributeError, TypeError):
+        return False
+
+
+def update_state_from_model(prefix: str, model: BaseModel) -> None:
+    """
+    Update session state with all fields from a Pydantic model.
+    
+    This function is useful for updating session state after loading a model
+    from a configuration file or after making changes to a model.
+    
+    Args:
+        prefix: Prefix to use for session state keys (e.g., "vehicle_1_input")
+        model: Pydantic model to extract values from
+        
+    Examples:
+        >>> scenario = load_default_scenario("default_bet")
+        >>> update_state_from_model("vehicle_1_input", scenario)
+    """
+    # Convert the model to a dictionary
+    model_dict = model.dict()
+    
+    # Update session state for each key in the model
+    _update_nested_state(prefix, model_dict)
+
+
+def _update_nested_state(prefix: str, data: Dict[str, Any]) -> None:
+    """
+    Recursively update session state from a nested dictionary.
+    
+    Args:
+        prefix: Prefix for session state keys
+        data: Dictionary of values to update
+    """
+    for key, value in data.items():
+        full_key = f"{prefix}.{key}"
+        
+        if isinstance(value, dict):
+            # Recursively handle nested dictionaries
+            _update_nested_state(full_key, value)
+        else:
+            # Set the value in session state
+            set_safe_state_value(full_key, value)
+
+
+def update_model_from_state(prefix: str, model_class: Type[T]) -> Optional[T]:
+    """
+    Create or update a Pydantic model with values from session state.
+    
+    This function is useful for collecting user inputs from Streamlit widgets
+    and creating a validated model.
+    
+    Args:
+        prefix: Prefix for session state keys (e.g., "vehicle_1_input")
+        model_class: Pydantic model class to create
+        
+    Returns:
+        Updated model instance or None if validation fails
+        
+    Examples:
+        >>> updated_scenario = update_model_from_state("vehicle_1_input", ScenarioInput)
+        >>> if updated_scenario:
+        >>>     # Valid model created
+        >>>     calculator.calculate(updated_scenario)
+    """
+    # Collect all relevant keys from session state
+    model_dict = _extract_nested_state(prefix)
+    
+    # Create and validate the model
+    try:
+        # Handle potential empty dictionaries for nested models
+        return model_class.parse_obj(model_dict)
+    except ValidationError as e:
+        st.error(f"Validation error: {str(e)}")
+        return None
+
+
+def _extract_nested_state(prefix: str) -> Dict[str, Any]:
+    """
+    Extract a nested dictionary from session state keys with a given prefix.
+    
+    Args:
+        prefix: Prefix for session state keys
+        
+    Returns:
+        Dictionary with values from session state
+    """
+    result = {}
+    prefix_len = len(prefix) + 1  # +1 for the dot
+    
+    # Collect all keys that start with the prefix
+    for key in st.session_state:
+        if isinstance(key, str) and key.startswith(f"{prefix}."):
+            # Extract the part after the prefix
+            path = key[prefix_len:]
+            
+            # Navigate to the right place in the result dictionary
+            current = result
+            parts = path.split('.')
+            
+            for i, part in enumerate(parts[:-1]):
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            
+            # Set the value at the leaf
+            current[parts[-1]] = st.session_state[key]
+    
+    return result
+
+
+def debug_state(prefix: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Generate a dictionary of session state values for debugging.
+    
+    Args:
+        prefix: Optional prefix to filter keys
+        
+    Returns:
+        Dictionary of session state values
+        
+    Examples:
+        >>> st.write(debug_state("vehicle_1_input"))
+    """
+    if prefix is None:
+        # Return the entire session state
+        return dict(st.session_state)
+    
+    # Filter keys by prefix
+    debug_dict = {}
+    for key in st.session_state:
+        if isinstance(key, str) and key.startswith(f"{prefix}"):
+            debug_dict[key] = st.session_state[key]
+    
+    return debug_dict
+
+
+def initialize_nested_state(key: str, default_value: Any) -> None:
+    """
+    Initialize a nested value in session state if it doesn't exist.
+    
+    This is useful for ensuring that nested paths exist before setting values.
+    
+    Args:
+        key: Dot-separated path to initialize
+        default_value: Default value to set if the key doesn't exist
+        
+    Examples:
+        >>> initialize_nested_state("vehicle_1_input.operational", {})
+        >>> initialize_nested_state("vehicle_1_input.operational.annual_distance_km", 100000)
+    """
+    if get_safe_state_value(key) is None:
+        set_safe_state_value(key, default_value)
 
 
 # --- Formatting Utilities ---

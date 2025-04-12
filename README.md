@@ -20,11 +20,13 @@ The application provides a user-friendly interface for defining detailed scenari
 ## Project Structure
 
 ```
-aus-heavy-vehicle-tco/
+aus-tco/
 ├── .env                  # Environment variables (for Pydantic BaseSettings)
 ├── .gitignore            # Git ignore file
 ├── app.py                # Main Streamlit application entry point, controller logic
-├── pyproject.toml        # Project metadata and dependencies (Poetry/PDM)
+├── requirements.txt      # Python dependencies
+├── run.sh                # Script to run the application in the virtual environment
+├── SETUP.md              # Detailed setup instructions
 ├── README.md             # Project documentation
 ├── config/               # Configuration files
 │   ├── defaults/         # Default economic and operational parameters
@@ -78,35 +80,49 @@ The application follows a modular, layered architecture to promote separation of
 ### Prerequisites
 
 - Python 3.9 or higher
-- Poetry (recommended) or pip
 
-### Installation
+### Installation and Setup
+
+For a complete guide on setting up the project, see [SETUP.md](SETUP.md).
+
+Quick setup:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/aus-heavy-vehicle-tco.git
-   cd aus-heavy-vehicle-tco
+   git clone https://github.com/yourusername/aus-tco.git
+   cd aus-tco
    ```
 
-2. Install dependencies using Poetry:
+2. Create a virtual environment and install dependencies:
    ```bash
-   poetry install
+   python -m venv venv
    ```
 
-   Or using pip:
+3. Activate the virtual environment:
+   - On macOS/Linux:
+     ```bash
+     source venv/bin/activate
+     ```
+   - On Windows:
+     ```bash
+     venv\Scripts\activate
+     ```
+
+4. Install required packages:
    ```bash
    pip install -r requirements.txt
    ```
 
 ### Running the Application
 
-1. Start the Streamlit application:
+1. Use the provided script to run the application (this activates the virtual environment automatically):
    ```bash
-   poetry run streamlit run app.py
+   ./run.sh
    ```
 
-   Or without Poetry:
+   Or manually activate the environment and run:
    ```bash
+   source venv/bin/activate
    streamlit run app.py
    ```
 
@@ -114,29 +130,16 @@ The application follows a modular, layered architecture to promote separation of
 
 ## Development
 
-### Setting Up a Development Environment
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/aus-heavy-vehicle-tco.git
-   cd aus-heavy-vehicle-tco
-   ```
-
-2. Create a virtual environment and install dependencies:
-   ```bash
-   poetry install --with dev
-   ```
-
 ### Running Tests
 
 Run all tests:
 ```bash
-poetry run pytest
+python -m pytest
 ```
 
 Run tests with coverage report:
 ```bash
-poetry run pytest --cov=tco_model
+python -m pytest --cov=tco_model
 ```
 
 ## Contributing
