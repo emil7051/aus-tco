@@ -1,0 +1,96 @@
+_# Economic Parameters Default Configuration
+# All monetary values in AUD
+
+# General economic parameters
+general:
+  discount_rate_real: 0.07  # 7% real discount rate
+  inflation_rate: 0.025     # 2.5% annual inflation
+  analysis_period_years: 15 # Default analysis period
+
+# Financing options
+financing:
+  default_method: "loan"    # Options: "loan", "cash"
+  loan:
+    term_years: 5
+    interest_rate: 0.07     # 7% interest rate
+    down_payment_percentage: 0.20  # 20% down payment
+
+# Energy prices
+energy_prices:
+  electricity:
+    # Structure: [year: [min_price, max_price]] in AUD/kWh
+    average_flat_rate:
+      2025: [0.30, 0.40]
+      2030: [0.28, 0.38]
+      2035: [0.26, 0.36]
+      2040: [0.25, 0.35]
+    off_peak_tou:
+      2025: [0.15, 0.25]
+      2030: [0.13, 0.22]
+      2035: [0.11, 0.20]
+      2040: [0.10, 0.18]
+    ev_special_plans:
+      low:
+        2025: 0.08
+        2030: 0.07
+        2035: 0.06
+        2040: 0.05
+      high:
+        2025: 0.15
+        2030: 0.13
+        2035: 0.11
+        2040: 0.10
+  diesel:
+    # Price scenarios in AUD/L
+    baseline_2025: 1.85
+    scenarios:
+      low_stable:
+        2025: 1.85
+        2030: 1.85
+        2035: 1.85
+        2040: 1.85
+      medium_increase:
+        2025: 1.85
+        2030: 2.10
+        2035: 2.35
+        2040: 2.60
+      high_increase:
+        2025: 1.85
+        2030: 2.40
+        2035: 2.90
+        2040: 3.40
+
+# Carbon pricing
+carbon_pricing:
+  carbon_tax_rate_2025: 30.00  # AUD per tonne CO2e
+  annual_increase_rate: 0.05    # 5% annual increase
+  
+# Battery costs
+battery_costs:
+  # Cost per kWh in AUD
+  per_kwh:
+    2025: 170
+    2030: 100
+    2035: 75
+    2040: 60
+  # Total pack costs by size (AUD)
+  pack_total:
+    "300kwh":
+      2025: 51000
+      2030: 30000
+      2035: 22500
+      2040: 18000
+    "500kwh":
+      2025: 85000
+      2030: 50000
+      2035: 37500
+      2040: 30000
+    "700kwh":
+      2025: 119000
+      2030: 70000
+      2035: 52500
+      2040: 42000
+  # Battery replacement parameters
+  replacement:
+    degradation_rate_annual: 0.02  # 2% capacity loss per year
+    replacement_threshold: 0.70    # Replace at 70% of original capacity

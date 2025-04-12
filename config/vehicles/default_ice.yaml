@@ -1,0 +1,76 @@
+# Internal Combustion Engine (ICE) Diesel Truck Default Configuration
+
+# Basic vehicle information
+vehicle_info:
+  type: "diesel"
+  category: "articulated"  # Options: "rigid", "articulated"
+  name: "Default Diesel Articulated"
+  description: "Standard diesel articulated truck (prime mover)"
+
+# Purchase and cost information
+purchase:
+  base_price_2025: 200000  # AUD
+  annual_price_decrease_real: 0.00  # Remains stable in real terms
+  notes: "Price expected to remain stable in real terms"
+
+# Engine specifications
+engine:
+  power_kw: 400
+  displacement_litres: 13
+  euro_emission_standard: "Euro 6"
+  adblue_required: true
+  adblue_consumption_percent_of_diesel: 0.05  # 5% of diesel consumption
+  
+# Fuel consumption
+fuel_consumption:
+  # Base consumption rates
+  base_rate_l_per_km: 0.53
+  consumption_range:
+    min: 0.45
+    max: 0.60
+    average: 0.53
+  
+  # Adjustment factors
+  load_adjustment_factor: 0.25  # 25% increase at full load vs empty
+  temperature_adjustment:
+    hot_weather: 0.03  # 3% increase in hot weather
+    cold_weather: 0.05  # 5% increase in cold weather
+
+# Refuelling specifications
+refuelling:
+  fuel_tank_capacity_litres: 1200
+  typical_refill_time_minutes: 15
+  typical_range_km: 2200
+  
+# Performance specifications
+performance:
+  max_payload_tonnes: 28
+  range_km: 2200
+  max_speed_kph: 100
+  acceleration_0_50_kph_seconds: 18
+  gradeability_percent: 15
+
+# Maintenance
+maintenance:
+  cost_per_km: 0.15  # AUD per km
+  annual_cost_at_reference_km: 12000  # At 80,000 km annually
+  reference_km: 80000
+  scheduled_maintenance_interval_km: 25000
+  major_service_interval_km: 100000
+  
+  # Detailed costs
+  detailed_costs:
+    annual_fixed_min: 2500
+    annual_fixed_max: 5000
+    per_km_variable: 0.10
+    notes: "More frequent/complex servicing than electric"
+
+# Emissions
+emissions:
+  co2_kg_per_litre: 2.68  # kg CO2 per litre of diesel
+  nox_g_per_km: 0.4
+  pm_g_per_km: 0.01
+  
+  # Carbon tax implications
+  carbon_tax_eligible: true
+  carbon_tax_calculation_method: "fuel_based"  # Based on fuel consumption
