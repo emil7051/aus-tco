@@ -1,0 +1,96 @@
+# Diesel Truck Regional Configuration
+
+# Basic vehicle information
+vehicle_info:
+  type: "diesel"
+  category: "articulated"
+  name: "Default Diesel Regional Articulated"
+
+# Purchase and cost information
+purchase:
+  base_price_2025: 220000
+  annual_price_decrease_real: 0.00
+
+# Engine specifications
+engine:
+  power_kw: 450
+  displacement_litres: 13
+  euro_emission_standard: "Euro 6"
+  adblue_required: true
+  adblue_consumption_percent_of_diesel: 0.05
+  co2_per_liter: 2.68
+  
+# Fuel consumption
+fuel_consumption:
+  base_rate_l_per_km: 0.48
+  min_rate: 0.42
+  max_rate: 0.55
+  load_adjustment_factor: 0.25
+  temperature_adjustment:
+    hot_weather: 0.03
+    cold_weather: 0.05
+
+# Performance specifications
+performance:
+  max_payload_tonnes: 28
+  range_km: 1800
+
+# Maintenance
+maintenance:
+  cost_per_km: 0.14
+  scheduled_maintenance_interval_km: 25000
+  major_service_interval_km: 100000
+  detailed_costs:
+    annual_fixed_min: 2500
+    annual_fixed_max: 5000
+
+# Residual values
+residual_values:
+  year_5: [0.45, 0.55]
+  year_10: [0.25, 0.35]
+  year_15: [0.10, 0.20]
+
+# Refueling specifications
+refueling:
+  tank_capacity_litres: 800
+  refueling_time_minutes: 20
+  
+  # Refueling strategies
+  refueling_strategy: "depot"  # Default strategy
+  strategies:
+    depot:
+      description: "Refuel at depot"
+      frequency_days: 3
+    public:
+      description: "Refuel at public stations"
+      frequency_days: 2
+      price_premium_percent: 0.02  # 2% higher price at public stations
+
+# Emissions
+emissions:
+  co2_g_per_km: 1020  # Based on fuel consumption
+  nox_g_per_km: 0.35
+  pm_g_per_km: 0.01
+  ghg_g_co2e_per_km: 1050  # Including non-CO2 GHGs
+  
+  # Carbon cost
+  carbon_cost_per_tonne_co2e: 50  # AUD per tonne CO2e
+  carbon_cost_included: false  # Default setting
+
+# Available models reference
+available_models:
+  - manufacturer: "Volvo"
+    model: "FH 500"
+    power_kw: 500
+    displacement_litres: 13.0
+    emission_standard: "Euro VI"
+  - manufacturer: "Mercedes-Benz"
+    model: "Actros 2646"
+    power_kw: 460
+    displacement_litres: 12.8
+    emission_standard: "Euro VI"
+  - manufacturer: "Scania"
+    model: "R 500"
+    power_kw: 500
+    displacement_litres: 13.0
+    emission_standard: "Euro VI" 

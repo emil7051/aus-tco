@@ -7,8 +7,8 @@ providing strong typing, validation, and structure to the data.
 
 from datetime import date
 from enum import Enum
-from typing import Dict, List, Literal, Optional, Tuple, Union
-from pydantic import BaseModel, Field, validator, root_validator, PrivateAttr
+from typing import Dict, List, Literal, Optional, Tuple, Union, Any
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator, ConfigDict
 from pydantic_settings import BaseSettings
 import numpy as np
 import warnings
@@ -68,14 +68,14 @@ class RangeValue(BaseModel):
     default: Optional[float] = None
     average: Optional[float] = None
     
-    @root_validator(skip_on_failure=True)
+    @model_validator(mode='before')
     def set_default_if_missing(cls, values):
         """Set default to average of min and max if not provided."""
         if values.get('default') is None and 'min' in values and 'max' in values:
             values['default'] = (values['min'] + values['max']) / 2
         return values
     
-    @validator('default')
+    @field_validator('default')
     def default_in_range(cls, v, values):
         """Validate that default value is within min-max range."""
         if v is not None and 'min' in values and 'max' in values:
@@ -189,12 +189,16 @@ class EnergyConsumptionParameters(BaseModel):
     hot_weather_adjustment: float = Field(0, ge=0, description="Factor for adjusting consumption in hot weather")
     cold_weather_adjustment: float = Field(0, ge=0, description="Factor for adjusting consumption in cold weather")
     
-    @validator('base_rate')
-    def base_rate_in_range(cls, v, values):
+    @field_validator('base_rate')
+    def base_rate_in_range(cls, v, info):
         """Validate that base rate is within min-max range."""
-        if 'min_rate' in values and 'max_rate' in values:
-            if v < values['min_rate'] or v > values['max_rate']:
-                raise ValueError(f'Base rate {v} must be between min {values["min_rate"]} and max {values["max_rate"]}')
+        # For Pydantic v2, we need to access data from the validation context
+        data = info.data
+        if 'min_rate' in data and 'max_rate' in data:
+            min_rate = data['min_rate']
+            max_rate = data['max_rate']
+            if v < min_rate or v > max_rate:
+                raise ValueError(f'Base rate {v} must be between min {min_rate} and max {max_rate}')
         return v
 
 
@@ -293,7 +297,7 @@ class MaintenanceParameters(BaseModel):
     scheduled_maintenance_interval_km: float = Field(..., gt=0, description="Interval for scheduled maintenance in kilometers")
     major_service_interval_km: float = Field(..., gt=0, description="Interval for major services in kilometers")
     
-    @root_validator(skip_on_failure=True)
+    @model_validator(mode='before')
     def set_default_fixed_cost(cls, values):
         """Set default fixed cost to average of min and max if not provided."""
         if values.get('annual_fixed_default') is None and 'annual_fixed_min' in values and 'annual_fixed_max' in values:
@@ -479,13 +483,13 @@ class OperationalParameters(BaseModel):
     is_urban_operation: bool = Field(False, description="Whether the vehicle operates in urban environments")
     average_load_factor: float = Field(0.8, ge=0, le=1, description="Average load factor (0-1, where 1 is full load)")
     
-    @root_validator(skip_on_failure=True)
+    @model_validator(mode='after')
     def set_daily_distance(cls, values):
         """Calculate daily distance from annual distance if not provided."""
-        if values.get('daily_distance_km') is None and 'annual_distance_km' in values and 'operating_days_per_year' in values:
-            operating_days = values.get('operating_days_per_year')
+        if values.daily_distance_km is None and values.annual_distance_km is not None and values.operating_days_per_year is not None:
+            operating_days = values.operating_days_per_year
             if operating_days > 0:
-                values['daily_distance_km'] = values['annual_distance_km'] / operating_days
+                values.daily_distance_km = values.annual_distance_km / operating_days
         return values
         
     # Note: This is a compatibility property that redirects to economic parameters
@@ -586,92 +590,92 @@ class AnnualCosts(BaseModel):
         return sum_costs
 
 
-class AnnualCostsCollection:
+class AnnualCostsCollection(BaseModel):
     """
     Wrapper for a list of AnnualCosts objects that provides both item access
     and attribute access to cost components across all years.
     """
+    costs: List[AnnualCosts] = Field(..., description="List of annual costs by year")
     
-    def __init__(self, costs: List[AnnualCosts]):
-        self._costs = costs
-        
+    model_config = {"frozen": False}
+    
     def __getitem__(self, index):
         """Allow direct indexing to get a specific year."""
-        return self._costs[index]
+        return self.costs[index]
     
     def __len__(self):
         """Return the number of years."""
-        return len(self._costs)
+        return len(self.costs)
     
     def __iter__(self):
         """Allow iteration over all years."""
-        return iter(self._costs)
+        return iter(self.costs)
     
     @property
     def total(self) -> List[float]:
         """Get total costs for all years."""
-        return [cost.total for cost in self._costs]
+        return [cost.total for cost in self.costs]
     
     @property
     def acquisition(self) -> List[float]:
         """Get acquisition costs for all years."""
-        return [cost.acquisition for cost in self._costs]
+        return [cost.acquisition for cost in self.costs]
     
     @property
     def energy(self) -> List[float]:
         """Get energy costs for all years."""
-        return [cost.energy for cost in self._costs]
+        return [cost.energy for cost in self.costs]
     
     @property
     def maintenance(self) -> List[float]:
         """Get maintenance costs for all years."""
-        return [cost.maintenance for cost in self._costs]
+        return [cost.maintenance for cost in self.costs]
     
     @property
     def infrastructure(self) -> List[float]:
         """Get infrastructure costs for all years."""
-        return [cost.infrastructure for cost in self._costs]
+        return [cost.infrastructure for cost in self.costs]
     
     @property
     def battery_replacement(self) -> List[float]:
         """Get battery replacement costs for all years."""
-        return [cost.battery_replacement for cost in self._costs]
+        return [cost.battery_replacement for cost in self.costs]
     
     @property
     def insurance(self) -> List[float]:
         """Get insurance costs for all years."""
-        return [cost.insurance for cost in self._costs]
+        return [cost.insurance for cost in self.costs]
     
     @property
     def registration(self) -> List[float]:
         """Get registration costs for all years."""
-        return [cost.registration for cost in self._costs]
+        return [cost.registration for cost in self.costs]
     
     @property
     def carbon_tax(self) -> List[float]:
         """Get carbon tax costs for all years."""
-        return [cost.carbon_tax for cost in self._costs]
+        return [cost.carbon_tax for cost in self.costs]
     
     @property
     def other_taxes(self) -> List[float]:
         """Get other taxes costs for all years."""
-        return [cost.other_taxes for cost in self._costs]
+        return [cost.other_taxes for cost in self.costs]
     
     @property
     def residual_value(self) -> List[float]:
         """Get residual values for all years."""
-        return [cost.residual_value for cost in self._costs]
+        return [cost.residual_value for cost in self.costs]
     
     # Combined properties to match UI components
     @property
     def insurance_registration(self) -> List[float]:
         """Get combined insurance and registration costs for all years."""
-        return [cost.insurance + cost.registration for cost in self._costs]
+        return [cost.insurance + cost.registration for cost in self.costs]
     
     @property
     def taxes_levies(self) -> List[float]:
         """Get combined taxes and levies for all years."""
-        return [cost.carbon_tax + cost.other_taxes for cost in self._costs]
+        return [cost.carbon_tax + cost.other_taxes for cost in self.costs]
 
 
 class NPVCosts(BaseModel):
@@ -764,15 +768,11 @@ class ComparisonResult(BaseModel):
     scenario_1: TCOOutput
     scenario_2: TCOOutput
     
-    # Renamed from npv_difference
-    tco_difference: float
-    
-    # Renamed from npv_difference_percentage
-    tco_percentage: float
-    
-    lcod_difference: float
-    lcod_difference_percentage: float
-    payback_year: Optional[int] = None
+    tco_difference: float = Field(..., description="Difference in TCO between scenarios")
+    tco_percentage: float = Field(..., description="Percentage difference in TCO")
+    lcod_difference: float = Field(..., description="Difference in LCOD between scenarios")
+    lcod_difference_percentage: float = Field(..., description="Percentage difference in LCOD")
+    payback_year: Optional[int] = Field(None, description="Year when the more expensive option breaks even")
     
     @property
     def component_differences(self) -> Dict[str, float]:
@@ -793,12 +793,10 @@ class ComparisonResult(BaseModel):
         """Return 1 if scenario_1 is cheaper, 2 if scenario_2 is cheaper."""
         return 1 if self.tco_difference > 0 else 2
     
-    # Temporary compatibility aliases have been removed
-    
     @classmethod
     def create(cls, scenario_1: TCOOutput, scenario_2: TCOOutput):
         """Create a comparison between two TCO results."""
-        # Calculate differences using new field names
+        # Calculate differences using field names
         tco_diff = scenario_2.total_tco - scenario_1.total_tco
         
         # Use helper function from terminology to calculate percentage difference
@@ -837,6 +835,4 @@ class AppSettings(BaseSettings):
     vehicles_config_path: str = "config/vehicles"
     defaults_config_path: str = "config/defaults"
     
-    class Config:
-        env_file = ".env"
-        env_prefix = "TCO_"
+    model_config = {"env_file": ".env", "env_prefix": "TCO_"}

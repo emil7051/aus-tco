@@ -1,0 +1,51 @@
+# Diesel Truck Default Configuration
+
+# Basic vehicle information
+vehicle_info:
+  type: "diesel"
+  category: "articulated"
+  name: "Default Diesel Articulated"
+
+# Purchase and cost information
+purchase:
+  base_price_2025: 200000
+  annual_price_decrease_real: 0.00
+
+# Engine specifications
+engine:
+  power_kw: 400
+  displacement_litres: 13
+  euro_emission_standard: "Euro 6"
+  adblue_required: true
+  adblue_consumption_percent_of_diesel: 0.05
+  co2_per_liter: 2.68
+  
+# Fuel consumption
+fuel_consumption:
+  base_rate_l_per_km: 0.53
+  min_rate: 0.45
+  max_rate: 0.60
+  load_adjustment_factor: 0.25
+  temperature_adjustment:
+    hot_weather: 0.03
+    cold_weather: 0.05
+
+# Performance specifications
+performance:
+  max_payload_tonnes: 28
+  range_km: 2200
+
+# Maintenance
+maintenance:
+  cost_per_km: 0.15
+  scheduled_maintenance_interval_km: 25000
+  major_service_interval_km: 100000
+  detailed_costs:
+    annual_fixed_min: 2500
+    annual_fixed_max: 5000
+
+# Residual values
+residual_values:
+  year_5: [0.45, 0.55]
+  year_10: [0.25, 0.35]
+  year_15: [0.10, 0.20]

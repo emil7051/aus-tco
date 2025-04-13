@@ -171,12 +171,12 @@ UI_COMPONENT_MAPPING: Dict[str, Dict[str, Any]] = {
 
 # Standard Field Names
 
-#: Mapping of old field names to new canonical field names
-FIELD_NAME_MAPPING: Dict[str, str] = {
-    "npv_total": "total_tco",
-    "lcod_per_km": "lcod",
-    "npv_difference": "tco_difference",
-    "npv_difference_percentage": "tco_percentage"
+#: Standard field names for the TCO model
+CANONICAL_FIELD_NAMES = {
+    "total_tco": "Total cost of ownership (NPV)",
+    "lcod": "Levelized cost of driving per km",
+    "tco_difference": "Difference in TCO between scenarios",
+    "tco_percentage": "Percentage difference in TCO"
 }
 
 # Comprehensive Config to Model Field Mapping by Vehicle Type
@@ -585,17 +585,17 @@ def get_component_description(component_name: str) -> str:
         f"No description available for {component_name}"
     )
 
-def get_canonical_field_name(old_name: str) -> str:
+def get_canonical_field_name(field_name: str) -> str:
     """
-    Get the canonical field name for an old field name.
+    Get the canonical field name.
     
     Args:
-        old_name: The old/deprecated field name
+        field_name: The field name to check
         
     Returns:
-        str: The canonical field name, or the original name if not mapped
+        str: The same field name, since all fields are now using canonical names
     """
-    return FIELD_NAME_MAPPING.get(old_name, old_name)
+    return field_name
 
 def get_ui_component_label(component_key: str) -> str:
     """

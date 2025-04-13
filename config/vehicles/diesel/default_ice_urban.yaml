@@ -1,0 +1,80 @@
+# Diesel Truck Urban Configuration
+
+# Basic vehicle information
+vehicle_info:
+  type: "diesel"
+  category: "rigid"
+  name: "Default Diesel Urban Rigid"
+
+# Purchase and cost information
+purchase:
+  base_price_2025: 150000
+  annual_price_decrease_real: 0.00
+
+# Engine specifications
+engine:
+  power_kw: 280
+  displacement_litres: 7.8
+  euro_emission_standard: "Euro 6"
+  adblue_required: true
+  adblue_consumption_percent_of_diesel: 0.05
+  co2_per_liter: 2.68
+  
+# Fuel consumption
+fuel_consumption:
+  base_rate_l_per_km: 0.35
+  min_rate: 0.30
+  max_rate: 0.40
+  load_adjustment_factor: 0.25
+  temperature_adjustment:
+    hot_weather: 0.03
+    cold_weather: 0.05
+
+# Performance specifications
+performance:
+  max_payload_tonnes: 11
+  range_km: 800
+
+# Maintenance
+maintenance:
+  cost_per_km: 0.12
+  scheduled_maintenance_interval_km: 20000
+  major_service_interval_km: 80000
+  detailed_costs:
+    annual_fixed_min: 2000
+    annual_fixed_max: 4000
+
+# Residual values
+residual_values:
+  year_5: [0.50, 0.60]
+  year_10: [0.30, 0.40]
+  year_15: [0.15, 0.25]
+
+# Emissions
+emissions:
+  co2_g_per_km: 670  # Based on fuel consumption
+  nox_g_per_km: 0.4
+  pm_g_per_km: 0.01
+  ghg_g_co2e_per_km: 700  # Including non-CO2 GHGs
+  
+  # Carbon cost
+  carbon_cost_per_tonne_co2e: 50  # AUD per tonne CO2e
+  carbon_cost_included: false  # Default setting
+
+# Available models reference
+available_models:
+  - manufacturer: "Volvo"
+    model: "FM 330"
+    power_kw: 260
+    displacement_litres: 8.0
+    emission_standard: "Euro VI"
+  - manufacturer: "Mercedes-Benz"
+    model: "Actros 2536"
+    power_kw: 290
+    displacement_litres: 10.7
+    emission_standard: "Euro VI"
+  - manufacturer: "Isuzu"
+    model: "FVR 165-300"
+    power_kw: 221
+    displacement_litres: 7.8
+    emission_standard: "Euro V" 

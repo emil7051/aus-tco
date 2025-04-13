@@ -1,0 +1,92 @@
+# Battery Electric Truck (BET) Regional Configuration
+
+# Basic vehicle information
+vehicle_info:
+  type: "battery_electric"
+  category: "articulated"
+  name: "Default BET Regional Articulated"
+
+# Purchase and cost information
+purchase:
+  base_price_2025: 450000
+  annual_price_decrease_real: 0.02
+
+# Battery specifications
+battery:
+  capacity_kwh: 600
+  usable_capacity_percentage: 0.90
+  degradation_rate_annual: 0.02
+  replacement_threshold: 0.70
+  expected_lifecycle_years: 8
+  replacement_cost_factor: 0.80
+
+# Energy consumption
+energy_consumption:
+  base_rate_kwh_per_km: 1.50
+  min_rate: 1.45
+  max_rate: 1.60
+  load_adjustment_factor: 0.15
+  temperature_adjustment:
+    hot_weather: 0.05
+    cold_weather: 0.15
+  regenerative_braking_efficiency: 0.65
+  regen_contribution_urban: 0.15
+
+# Charging specifications
+charging:
+  max_charging_power_kw: 350
+  charging_efficiency: 0.90
+  charging_strategy: "opportunity"
+  strategies:
+    overnight_depot:
+      electricity_rate_type: "off_peak_tou"
+    opportunity:
+      electricity_rate_type: "average_tou"
+
+# Performance specifications
+performance:
+  max_payload_tonnes: 26
+  range_km: 450
+
+# Maintenance
+maintenance:
+  cost_per_km: 0.08
+  scheduled_maintenance_interval_km: 40000
+  major_service_interval_km: 120000
+  detailed_costs:
+    annual_fixed_min: 700
+    annual_fixed_max: 1500
+
+# Infrastructure
+infrastructure:
+  charger_hardware_cost: 200000
+  installation_cost: 80000
+  maintenance_annual_percentage: 0.015
+  trucks_per_charger: 1.0
+  grid_upgrade_cost: 50000
+
+# Residual values
+residual_values:
+  year_5: [0.35, 0.45]
+  year_10: [0.15, 0.25]
+  year_15: [0.05, 0.10]
+
+# Available models reference
+available_models:
+  - manufacturer: "Volvo"
+    model: "FH Electric"
+    battery_kwh: 600
+    range_km: 400
+    max_charging_kw: 350
+  - manufacturer: "Mercedes-Benz"
+    model: "eActros 600"
+    battery_kwh: 600
+    range_km: 500
+    max_charging_kw: 1000
+    notes: "MCS charger capability"
+  - manufacturer: "Tesla"
+    model: "Semi"
+    battery_kwh: 800
+    range_km: 500
+    max_charging_kw: 1000
+    notes: "Proprietary charging network" 

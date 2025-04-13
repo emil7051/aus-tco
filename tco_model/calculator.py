@@ -213,7 +213,7 @@ class TCOCalculator:
         )
         
         # Wrap annual costs with the collection class
-        annual_costs_collection = AnnualCostsCollection(annual_costs_list)
+        annual_costs_collection = AnnualCostsCollection(costs=annual_costs_list)
         
         # Create and return the TCO output
         result = TCOOutput(

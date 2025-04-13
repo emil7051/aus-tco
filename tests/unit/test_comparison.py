@@ -74,22 +74,19 @@ class TestComparisonFunctionality:
         assert comparison.cheaper_option == 1  # output1 is cheaper
     
     def test_deprecated_field_access_in_comparison(self):
-        """Test that deprecated comparison fields still work but raise warnings."""
+        """Test that the new comparison field names are used correctly."""
         output1 = create_test_output(total_tco=100000)
         output2 = create_test_output(total_tco=120000)
         
         comparison = ComparisonResult.create(output1, output2)
         
-        # Access deprecated fields with warning recording
-        with pytest.warns(DeprecationWarning):
-            npv_diff = comparison.npv_difference
-            
-        with pytest.warns(DeprecationWarning):
-            npv_pct = comparison.npv_difference_percentage
-            
-        # Verify values are correct despite deprecation
-        assert npv_diff == 20000
-        assert npv_pct == 20.0
+        # Access new field names directly
+        tco_diff = comparison.tco_difference
+        tco_pct = comparison.tco_percentage
+        
+        # Verify the values are correct
+        assert tco_diff == 20000
+        assert tco_pct == 20.0
 
 
 # Helper function to create test output
@@ -114,7 +111,7 @@ def create_test_output(total_tco=100000, lcod=0.2, **kwargs):
         vehicle_type=VehicleType.BATTERY_ELECTRIC,
         analysis_period_years=5,
         total_distance_km=500000,
-        annual_costs=AnnualCostsCollection([]),
+        annual_costs=AnnualCostsCollection(costs=[]),
         npv_costs=npv_costs,
         total_nominal_cost=total_tco * 1.1,  # Just for test purposes
         total_tco=total_tco,

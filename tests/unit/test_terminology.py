@@ -32,7 +32,7 @@ class TestFieldRenaming:
     """Tests for field renaming."""
     
     def test_deprecated_field_access(self):
-        """Test that deprecated fields raise warnings but still work."""
+        """Test that the new field names are used correctly."""
         # Create a TCOOutput with new field names
         output = TCOOutput(
             scenario_name="Test Scenario",
@@ -40,7 +40,7 @@ class TestFieldRenaming:
             vehicle_type=VehicleType.BATTERY_ELECTRIC,
             analysis_period_years=5,
             total_distance_km=500000,
-            annual_costs=AnnualCostsCollection([]),
+            annual_costs=AnnualCostsCollection(costs=[]),
             npv_costs=NPVCosts(),
             total_nominal_cost=100000,
             total_tco=90000,  # New field name
@@ -48,16 +48,13 @@ class TestFieldRenaming:
             calculation_date=date.today()
         )
         
-        # Access deprecated fields with warning recording
-        with pytest.warns(DeprecationWarning):
-            npv_total = output.npv_total
-            
-        with pytest.warns(DeprecationWarning):
-            lcod_per_km = output.lcod_per_km
-            
-        # Verify values are correct despite deprecation
-        assert npv_total == 90000
-        assert lcod_per_km == 0.18
+        # Access new field names directly
+        total_tco = output.total_tco
+        lcod = output.lcod
+        
+        # Verify that the values are correct
+        assert total_tco == 90000
+        assert lcod == 0.18
     
     def test_component_differences_property(self):
         """Test the component_differences property in ComparisonResult."""
@@ -104,7 +101,7 @@ class TestAnnualCostsCollection:
             AnnualCosts(year=1, calendar_year=2026, acquisition=0, energy=10500)
         ]
         
-        collection = AnnualCostsCollection(annual_costs)
+        collection = AnnualCostsCollection(costs=annual_costs)
         
         # Test indexing
         assert collection[0].acquisition == 50000
@@ -124,7 +121,7 @@ class TestAnnualCostsCollection:
             AnnualCosts(year=1, calendar_year=2026, acquisition=0, energy=10500)
         ]
         
-        collection = AnnualCostsCollection(annual_costs)
+        collection = AnnualCostsCollection(costs=annual_costs)
         
         # Test component lists
         assert collection.acquisition == [50000, 0]
@@ -151,7 +148,7 @@ class TestAnnualCostsCollection:
             )
         ]
         
-        collection = AnnualCostsCollection(annual_costs)
+        collection = AnnualCostsCollection(costs=annual_costs)
         
         # Test direct access to year's component
         assert get_component_value(collection, "acquisition", 0) == 50000
@@ -238,7 +235,7 @@ def create_test_output(acquisition=0, energy=0, maintenance=0, infrastructure=0,
         vehicle_type=VehicleType.BATTERY_ELECTRIC,
         analysis_period_years=5,
         total_distance_km=500000,
-        annual_costs=AnnualCostsCollection([]),
+        annual_costs=AnnualCostsCollection(costs=[]),
         npv_costs=npv_costs,
         total_nominal_cost=total_tco * 1.1,  # Just for test purposes
         total_tco=total_tco,

@@ -1,13 +1,13 @@
 """
-Configuration Validation Utilities
+Configuration utilities for validating and loading config files.
 
-This module provides functions for validating configuration files against schema
-definitions and transforming configuration data to standardized formats.
+This module provides utility functions for working with configuration files,
+including validation against schemas and loading with field mapping.
 """
 
-from typing import Dict, Any, Type, Union, List, Optional, Tuple
-from pathlib import Path
 import yaml
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Tuple, Type, Union
 from pydantic import BaseModel, ValidationError
 
 
@@ -21,14 +21,9 @@ def validate_config_file(file_path: Union[str, Path], schema_class: Type[BaseMod
         
     Returns:
         Tuple containing (is_valid, list_of_errors)
-        
-    Example:
-        >>> is_valid, errors = validate_config_file("config/vehicles/bet_truck.yaml", BETSchema)
-        >>> if not is_valid:
-        >>>     for error in errors:
-        >>>         print(f"Error: {error}")
     """
     try:
+        # Load the YAML file
         with open(file_path, 'r') as f:
             config_data = yaml.safe_load(f)
             
@@ -49,6 +44,69 @@ def validate_config_file(file_path: Union[str, Path], schema_class: Type[BaseMod
             message = error["msg"]
             errors.append(f"{location}: {message}")
         return False, errors
+
+
+def load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
+    """
+    Load a YAML file and return its contents as a dictionary.
+    
+    Args:
+        file_path: Path to the YAML file
+        
+    Returns:
+        Dictionary containing the file contents
+        
+    Raises:
+        FileNotFoundError: If the file does not exist
+        yaml.YAMLError: If the file is not valid YAML
+    """
+    with open(file_path, 'r') as f:
+        return yaml.safe_load(f)
+
+
+def get_nested_config_value(config_data: Dict[str, Any], key_path: str) -> Any:
+    """
+    Get a value from a nested dictionary using a dot-separated key path.
+    
+    Args:
+        config_data: Configuration data dictionary
+        key_path: Dot-separated path to the value (e.g., "energy_consumption.base_rate")
+        
+    Returns:
+        The value at the specified path, or None if not found
+    """
+    keys = key_path.split('.')
+    current = config_data
+    
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return None
+            
+    return current
+
+
+def set_nested_model_value(model_data: Dict[str, Any], key_path: str, value: Any) -> None:
+    """
+    Set a value in a nested dictionary using a dot-separated key path.
+    
+    Args:
+        model_data: Model data dictionary to modify
+        key_path: Dot-separated path to the value (e.g., "energy_consumption.base_rate")
+        value: Value to set
+    """
+    keys = key_path.split('.')
+    current = model_data
+    
+    # Create intermediate dictionaries if they don't exist
+    for i, key in enumerate(keys[:-1]):
+        if key not in current:
+            current[key] = {}
+        current = current[key]
+        
+    # Set the final value
+    current[keys[-1]] = value
 
 
 def migrate_config_to_standard(file_path: Union[str, Path], 
@@ -90,48 +148,4 @@ def migrate_config_to_standard(file_path: Union[str, Path],
         if value is not None:
             set_nested_model_value(standardized_data, model_key, value)
     
-    return standardized_data
-
-
-def get_nested_config_value(config_data: Dict[str, Any], field_path: str) -> Any:
-    """
-    Retrieve a nested value from a configuration dictionary using dot notation.
-    
-    Args:
-        config_data: Configuration data dictionary
-        field_path: Dot-separated path to the field (e.g., "battery.capacity_kwh")
-        
-    Returns:
-        The value at the specified path, or None if not found
-    """
-    parts = field_path.split('.')
-    current = config_data
-    
-    try:
-        for part in parts:
-            current = current[part]
-        return current
-    except (KeyError, TypeError):
-        return None
-
-
-def set_nested_model_value(model_data: Dict[str, Any], field_path: str, value: Any) -> None:
-    """
-    Set a nested value in a model dictionary using dot notation.
-    
-    Args:
-        model_data: Model data dictionary to update
-        field_path: Dot-separated path to the field (e.g., "battery.capacity_kwh")
-        value: Value to set
-    """
-    parts = field_path.split('.')
-    current = model_data
-    
-    # Navigate to the parent object, creating dictionaries as needed
-    for part in parts[:-1]:
-        if part not in current:
-            current[part] = {}
-        current = current[part]
-    
-    # Set the value
-    current[parts[-1]] = value 
+    return standardized_data 
