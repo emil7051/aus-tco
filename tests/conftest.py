@@ -34,6 +34,7 @@ from tco_model.models import (
     EngineParameters,
     ResidualValueParameters,
     MaintenanceParameters,
+    ChargingStrategy,
 )
 
 
@@ -43,31 +44,19 @@ def economic_parameters() -> EconomicParameters:
     Fixture providing default economic parameters for tests.
     """
     return EconomicParameters(
-        discount_rate=0.07,  # 7%
+        discount_rate_real=0.07,  # 7%
         inflation_rate=0.025,  # 2.5%
+        analysis_period_years=15,
+        electricity_price_type=ElectricityRateType.AVERAGE_FLAT_RATE,
+        diesel_price_scenario=DieselPriceScenario.MEDIUM_INCREASE,
+        carbon_tax_rate_aud_per_tonne=30.0,
+        carbon_tax_annual_increase_rate=0.05,
         financing=FinancingParameters(
             method=FinancingMethod.LOAN,
-            loan_term=5,
-            interest_rate=0.05,  # 5%
-            deposit_percentage=0.2,  # 20%
+            loan_term_years=5,
+            loan_interest_rate=0.05,  # 5%
+            down_payment_percentage=0.2,  # 20%
         ),
-        energy_prices={
-            "electricity": {
-                "rate_type": ElectricityRateType.FLAT_RATE,
-                "price": 0.25,  # AUD/kWh
-                "annual_change": 0.01,  # 1%
-            },
-            "diesel": {
-                "price": 1.50,  # AUD/L
-                "scenario": DieselPriceScenario.CONSTANT,
-                "annual_change": 0.02,  # 2%
-            },
-        },
-        carbon_tax={
-            "enabled": False,
-            "rate": 25.0,  # AUD/tonne CO2
-            "annual_change": 0.05,  # 5%
-        },
     )
 
 
@@ -77,11 +66,11 @@ def operational_parameters() -> OperationalParameters:
     Fixture providing default operational parameters for tests.
     """
     return OperationalParameters(
-        annual_distance=100000,  # km
-        operating_days=260,  # days
-        analysis_period=15,  # years
-        payload=20.0,  # tonnes
-        utilization=0.8,  # 80%
+        annual_distance_km=100000,  # km
+        operating_days_per_year=260,  # days
+        vehicle_life_years=15,  # years
+        average_load_factor=0.8,  # 80%
+        is_urban_operation=False,
         profile="Regional",
     )
 
@@ -92,11 +81,24 @@ def infrastructure_parameters() -> InfrastructureParameters:
     Fixture providing default infrastructure parameters for tests.
     """
     return InfrastructureParameters(
-        charger_cost=50000.0,
+        charger_hardware_cost=50000.0,
         installation_cost=20000.0,
         grid_upgrade_cost=30000.0,
-        maintenance_cost=2000.0,
-        lifetime=15,
+        maintenance_annual_percentage=0.015,
+        trucks_per_charger=1.0,
+    )
+
+
+@pytest.fixture
+def financing_parameters() -> FinancingParameters:
+    """
+    Fixture providing default financing parameters for tests.
+    """
+    return FinancingParameters(
+        method=FinancingMethod.LOAN,
+        loan_term_years=5,
+        loan_interest_rate=0.07,
+        down_payment_percentage=0.2,
     )
 
 
@@ -110,32 +112,43 @@ def bet_parameters() -> BETParameters:
         category=VehicleCategory.ARTICULATED,
         name="Example BET",
         purchase_price=500000.0,
+        max_payload_tonnes=30.0,
+        range_km=300.0,
         battery=BatteryParameters(
-            capacity=400.0,  # kWh
-            degradation_rate=0.02,  # 2% per year
+            capacity_kwh=400.0,  # kWh
+            degradation_rate_annual=0.02,  # 2% per year
             replacement_threshold=0.8,  # 80%
-            price_per_kwh=800.0,  # AUD/kWh
+            replacement_cost_factor=0.8,  # 80% of original cost
+            usable_capacity_percentage=0.9,  # 90% of capacity is usable
         ),
-        consumption=BETConsumptionParameters(
+        energy_consumption=BETConsumptionParameters(
             base_rate=1.5,  # kWh/km
-            adjustment_factors={
-                "load": 0.2,
-                "terrain": 0.1,
-                "temperature": 0.05,
-            },
+            min_rate=1.0,   # Minimum consumption rate
+            max_rate=2.0,   # Maximum consumption rate
+            load_adjustment_factor=0.2,  # Changed from adjustment_factors
+            hot_weather_adjustment=0.05,  # Added
+            cold_weather_adjustment=0.05,  # Added
+            regenerative_braking_efficiency=0.65,  # Added for BETConsumptionParameters
+            regen_contribution_urban=0.2,  # Added for BETConsumptionParameters
         ),
         charging=ChargingParameters(
-            power=150.0,  # kW
-            efficiency=0.9,
-            time_per_session=1.0,  # hours
+            max_charging_power_kw=150.0,  # kW
+            charging_efficiency=0.9,
+            strategy=ChargingStrategy.OVERNIGHT_DEPOT,
+            electricity_rate_type=ElectricityRateType.AVERAGE_FLAT_RATE
         ),
         maintenance=MaintenanceParameters(
-            base_rate=0.15,  # AUD/km
-            annual_increase=0.05,  # 5% per year
+            cost_per_km=0.15,  # AUD/km
+            annual_fixed_min=700,
+            annual_fixed_max=1500,
+            annual_fixed_default=1000,  # Added default value
+            scheduled_maintenance_interval_km=40000,
+            major_service_interval_km=120000
         ),
         residual_value=ResidualValueParameters(
-            initial_percentage=0.5,  # 50% of purchase price
-            annual_depreciation=0.1,  # 10% per year
+            year_5_range=(0.45, 0.55),
+            year_10_range=(0.25, 0.35),
+            year_15_range=(0.10, 0.20),
         ),
     )
 
@@ -150,144 +163,136 @@ def diesel_parameters() -> DieselParameters:
         category=VehicleCategory.ARTICULATED,
         name="Example Diesel Truck",
         purchase_price=400000.0,
+        max_payload_tonnes=35.0,
+        range_km=800.0,
         engine=EngineParameters(
-            power=350,  # kW
-            emissions_standard="Euro VI",
+            power_kw=350,  # kW
+            displacement_litres=13,  # liters
+            euro_emission_standard="Euro VI",
+            adblue_required=True,
+            adblue_consumption_percent_of_diesel=0.05,  # 5% of diesel consumption
         ),
-        consumption=DieselConsumptionParameters(
+        fuel_consumption=DieselConsumptionParameters(
             base_rate=35.0,  # L/100km
-            adjustment_factors={
-                "load": 0.15,
-                "terrain": 0.1,
-                "temperature": 0.03,
-            },
+            min_rate=25.0,   # Minimum consumption rate
+            max_rate=45.0,   # Maximum consumption rate
+            load_adjustment_factor=0.15,  # Changed from adjustment_factors
+            hot_weather_adjustment=0.03,  # Added
+            cold_weather_adjustment=0.03,  # Added
         ),
-        emissions={
-            "co2_per_liter": 2.7,  # kg/L
-        },
         maintenance=MaintenanceParameters(
-            base_rate=0.2,  # AUD/km
-            annual_increase=0.05,  # 5% per year
+            cost_per_km=0.15,  # AUD/km
+            annual_fixed_min=700,
+            annual_fixed_max=1500,
+            annual_fixed_default=1000,  # Added default
+            scheduled_maintenance_interval_km=40000,
+            major_service_interval_km=120000
         ),
         residual_value=ResidualValueParameters(
-            initial_percentage=0.4,  # 40% of purchase price
-            annual_depreciation=0.12,  # 12% per year
+            year_5_range=(0.45, 0.55),
+            year_10_range=(0.25, 0.35),
+            year_15_range=(0.10, 0.20),
         ),
     )
 
 
 @pytest.fixture
-def bet_scenario(bet_parameters, operational_parameters, economic_parameters, infrastructure_parameters) -> ScenarioInput:
+def bet_scenario(bet_parameters, operational_parameters, economic_parameters, infrastructure_parameters, financing_parameters) -> ScenarioInput:
     """
     Fixture providing a complete BET scenario for tests.
     """
     return ScenarioInput(
+        scenario_name="BET Test Scenario",
         vehicle=bet_parameters,
         operational=operational_parameters,
         economic=economic_parameters,
+        financing=financing_parameters,
         infrastructure=infrastructure_parameters,
     )
 
 
 @pytest.fixture
-def diesel_scenario(diesel_parameters, operational_parameters, economic_parameters, infrastructure_parameters) -> ScenarioInput:
+def diesel_scenario(diesel_parameters, operational_parameters, economic_parameters, infrastructure_parameters, financing_parameters) -> ScenarioInput:
     """
     Fixture providing a complete diesel scenario for tests.
     """
     return ScenarioInput(
+        scenario_name="Diesel Test Scenario",
         vehicle=diesel_parameters,
         operational=operational_parameters,
         economic=economic_parameters,
+        financing=financing_parameters,
         infrastructure=infrastructure_parameters,
     )
 
 
 @pytest.fixture
-def edge_case_high_usage_scenario(bet_parameters, economic_parameters, infrastructure_parameters) -> ScenarioInput:
+def edge_case_high_usage_scenario(bet_parameters, economic_parameters, infrastructure_parameters, financing_parameters) -> ScenarioInput:
     """
     Fixture providing an edge case scenario with high annual distance.
     """
     # Create a modified operational parameters object with high usage
     high_usage_operational = OperationalParameters(
-        annual_distance=500000,  # Very high annual distance
-        operating_days=365,  # Maximum operating days
-        analysis_period=20,  # Extended analysis period
-        payload=30.0,  # High payload
-        utilization=1.0,  # 100% utilization
-        profile="Long-haul",
+        annual_distance_km=500000,  # Very high annual distance
+        operating_days_per_year=365,  # Maximum operating days
+        vehicle_life_years=20,  # Extended analysis period
+        average_load_factor=1.0,  # 100% utilization
+        is_urban_operation=False,
     )
     
     return ScenarioInput(
+        scenario_name="High Usage Edge Case",
         vehicle=bet_parameters,
         operational=high_usage_operational,
         economic=economic_parameters,
+        financing=financing_parameters,
         infrastructure=infrastructure_parameters,
     )
 
 
 @pytest.fixture
-def edge_case_low_usage_scenario(diesel_parameters, economic_parameters, infrastructure_parameters) -> ScenarioInput:
+def edge_case_low_usage_scenario(diesel_parameters, economic_parameters, infrastructure_parameters, financing_parameters) -> ScenarioInput:
     """
     Fixture providing an edge case scenario with low annual distance.
     """
     # Create a modified operational parameters object with low usage
     low_usage_operational = OperationalParameters(
-        annual_distance=10000,  # Very low annual distance
-        operating_days=100,  # Limited operating days
-        analysis_period=5,  # Short analysis period
-        payload=5.0,  # Low payload
-        utilization=0.3,  # 30% utilization
-        profile="Urban",
+        annual_distance_km=10000,  # Very low annual distance
+        operating_days_per_year=100,  # Limited operating days
+        vehicle_life_years=5,  # Short analysis period
+        average_load_factor=0.3,  # 30% utilization
+        is_urban_operation=True,
     )
     
     return ScenarioInput(
+        scenario_name="Low Usage Edge Case",
         vehicle=diesel_parameters,
         operational=low_usage_operational,
         economic=economic_parameters,
+        financing=financing_parameters,
         infrastructure=infrastructure_parameters,
     )
 
 
 @pytest.fixture
-def edge_case_zero_values_scenario(bet_parameters, operational_parameters, economic_parameters, infrastructure_parameters) -> ScenarioInput:
+def edge_case_zero_values_scenario(bet_parameters, operational_parameters, economic_parameters, infrastructure_parameters, financing_parameters) -> ScenarioInput:
     """
     Fixture providing an edge case scenario with zero values.
     """
     # Create a modified operational parameters object with zero values
     zero_operational = OperationalParameters(
-        annual_distance=0,  # Zero annual distance
-        operating_days=0,  # Zero operating days
-        analysis_period=1,  # Minimum analysis period
-        payload=0.0,  # Zero payload
-        utilization=0.0,  # 0% utilization
-        profile="Urban",
-    )
-    
-    # Create a copy of the economic parameters with zero discount rate
-    zero_economic = EconomicParameters(
-        discount_rate=0.0,  # 0% discount rate
-        inflation_rate=0.0,  # 0% inflation rate
-        financing=economic_parameters.financing,
-        energy_prices=economic_parameters.energy_prices,
-        carbon_tax=economic_parameters.carbon_tax,
-    )
-    
-    # Create a copy of BET parameters with zero purchase price
-    zero_bet_parameters = BETParameters(
-        type=bet_parameters.type,
-        category=bet_parameters.category,
-        name="Zero-Value BET",
-        purchase_price=0.0,  # Zero purchase price
-        battery=bet_parameters.battery,
-        consumption=bet_parameters.consumption,
-        charging=bet_parameters.charging,
-        maintenance=bet_parameters.maintenance,
-        residual_value=bet_parameters.residual_value,
+        annual_distance_km=0.01,  # Almost zero annual distance (can't be exactly zero due to validation)
+        operating_days_per_year=1,  # Minimum operating days
+        vehicle_life_years=1,  # Minimum vehicle life
+        average_load_factor=0.01,  # Minimum load factor
+        is_urban_operation=False,
     )
     
     return ScenarioInput(
-        vehicle=zero_bet_parameters,
+        scenario_name="Zero Values Edge Case",
+        vehicle=bet_parameters,
         operational=zero_operational,
-        economic=zero_economic,
+        economic=economic_parameters,
+        financing=financing_parameters,
         infrastructure=infrastructure_parameters,
-    ) 
+    )

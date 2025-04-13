@@ -1,0 +1,100 @@
+# Battery Electric Truck (BET) Urban Delivery Configuration
+
+# Basic vehicle information
+vehicle_info:
+  type: "battery_electric"
+  category: "rigid"  # Urban delivery typically uses rigid trucks
+  name: "Urban BET Delivery"
+  description: "Battery electric rigid truck for urban delivery operations"
+
+# Purchase and cost information
+purchase:
+  base_price_2025: 350000  # AUD
+  annual_price_decrease_real: 0.02  # 2% real decrease per year
+  notes: "Urban delivery BETs have lower battery capacities, reducing cost"
+
+# Battery specifications
+battery:
+  capacity_kwh: 300  # Lower capacity needed for urban operations
+  usable_capacity_percentage: 0.90  # 90% of total capacity is usable
+  degradation_rate_annual: 0.018  # 1.8% capacity loss per year
+  replacement_threshold: 0.70  # Replace at 70% of original capacity
+  expected_lifecycle_years: 8  # Expected years before replacement
+  replacement_cost_factor: 0.80  # Replacement cost as percentage of new battery
+
+# Energy consumption
+energy_consumption:
+  # Base consumption rates in kWh/km
+  base_rate_kwh_per_km: 1.10  # Lower consumption for smaller rigid truck
+  consumption_range:
+    min: 1.00
+    max: 1.20
+  
+  # Adjustment factors
+  load_adjustment_factor: 0.15  # 15% increase at full load vs empty
+  temperature_adjustment:
+    hot_weather: 0.05  # 5% increase in hot weather
+    cold_weather: 0.15  # 15% increase in cold weather
+  
+  # Regenerative braking - higher benefit in urban environments
+  regenerative_braking_efficiency: 0.70  # 70% energy recovery efficiency
+  regen_contribution_urban: 0.25  # 25% energy saving in urban driving with frequent stops
+
+# Charging specifications
+charging:
+  max_charging_power_kw: 150  # Lower power charging sufficient for overnight
+  charging_efficiency: 0.90  # 90% of electricity from grid becomes battery energy
+  
+  # Charging strategies and times
+  charging_strategy: "overnight_depot"  # Default strategy
+  strategies:
+    overnight_depot:
+      description: "Full charge overnight at depot"
+      time_required_hours: 6  # Less time needed for smaller battery
+      electricity_rate_type: "off_peak_tou"
+    opportunity:
+      description: "Fast charging during operation"
+      time_required_hours: 0.5  # Shorter charging time for smaller battery
+      electricity_rate_type: "average_flat_rate"
+
+# Performance specifications
+performance:
+  max_payload_tonnes: 12  # Lower payload for urban rigid truck
+  range_km: 250  # Sufficient for urban delivery routes
+  max_speed_kph: 90
+  acceleration_0_50_kph_seconds: 15  # Better acceleration for urban start-stop
+  gradeability_percent: 15  # Better hill climbing for urban conditions
+
+# Maintenance
+maintenance:
+  cost_per_km: 0.07  # AUD per km, slightly lower for smaller vehicle
+  annual_cost_at_reference_km: 2800  # At 40,000 km annually
+  reference_km: 40000  # Lower annual distance for urban operations
+  scheduled_maintenance_interval_km: 30000
+  major_service_interval_km: 90000
+  
+  # Detailed costs
+  detailed_costs:
+    annual_fixed_min: 600
+    annual_fixed_max: 1200
+    per_km_variable: 0.045
+    notes: "Less complex than articulated trucks, frequent regenerative braking reduces wear"
+
+# Available models reference
+available_models:
+  - manufacturer: "Volvo"
+    model: "FE Electric"
+    battery_kwh: [200, 300]
+    range_km: [200, 300]
+    max_charging_kw: 150
+  - manufacturer: "Mercedes-Benz"
+    model: "eActros 300"
+    battery_kwh: 336
+    range_km: 220
+    max_charging_kw: 160
+  - manufacturer: "Fuso"
+    model: "eCanter"
+    battery_kwh: 135
+    range_km: 150
+    max_charging_kw: 104
+    notes: "Smaller urban delivery truck" 

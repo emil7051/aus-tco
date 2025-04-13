@@ -18,6 +18,7 @@ from ui.inputs.economic import render_economic_inputs
 from ui.inputs.financing import render_financing_inputs
 from ui.results.summary import render_summary
 from ui.results.charts import render_charts
+from ui.guide import render_guide
 
 # Import TCO model and utilities
 from tco_model.calculator import TCOCalculator
@@ -248,8 +249,8 @@ def main():
             st.write("Vehicle 1 State:", debug_state(STATE_VEHICLE_1_INPUT))
             st.write("Vehicle 2 State:", debug_state(STATE_VEHICLE_2_INPUT))
     
-    # Create tabs for inputs and results
-    tabs = st.tabs(["Vehicle Configuration", "Results"])
+    # Create tabs for inputs, results, and guide
+    tabs = st.tabs(["Vehicle Configuration", "Results", "User Guide"])
     
     # Vehicle Configuration Tab
     with tabs[0]:
@@ -300,6 +301,10 @@ def main():
                 render_charts(results, comparison)
         else:
             st.info("Configure vehicle parameters and click 'Calculate TCO' to see results.")
+    
+    # User Guide Tab
+    with tabs[2]:
+        render_guide()
 
 
 if __name__ == "__main__":

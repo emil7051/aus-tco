@@ -18,6 +18,7 @@ from tco_model.models import (
     NPVCosts,
     ComparisonResult,
     VehicleType,
+    AnnualCostsCollection,
 )
 from tco_model.costs import (
     calculate_acquisition_costs,
@@ -56,8 +57,15 @@ class TCOCalculator:
             scenario: The scenario input containing all parameters for the calculation.
             
         Returns:
-            TCOOutput: The calculated TCO results.
+            TCOOutput: The calculated TCO results with the following key fields:
+                - total_tco: Total cost of ownership in NPV terms
+                - lcod: Levelized cost of driving per km
+                - annual_costs: Annual breakdown of costs as AnnualCostsCollection
+                - npv_costs: NPV breakdown of costs by component
         """
+        # Constants for readability
+        FIRST_YEAR = 0
+        
         # Extract key parameters
         analysis_period = scenario.economic.analysis_period_years
         discount_rate = scenario.economic.discount_rate_real
@@ -168,7 +176,7 @@ class TCOCalculator:
         
         # Calculate levelized cost of driving (LCOD) per km
         total_distance_km = annual_distance * analysis_period
-        lcod_per_km = npv_costs['total'] / total_distance_km if total_distance_km > 0 else 0
+        lcod = npv_costs['total'] / total_distance_km if total_distance_km > 0 else 0
         
         # Convert annual costs dataframe to list of AnnualCosts objects
         annual_costs_list = []
@@ -204,19 +212,28 @@ class TCOCalculator:
             residual_value=npv_costs['residual_value']
         )
         
+        # Wrap annual costs with the collection class
+        annual_costs_collection = AnnualCostsCollection(annual_costs_list)
+        
         # Create and return the TCO output
-        return TCOOutput(
+        result = TCOOutput(
             scenario_name=scenario.scenario_name,
             vehicle_name=scenario.vehicle.name,
             vehicle_type=scenario.vehicle.type,
             analysis_period_years=analysis_period,
             total_distance_km=total_distance_km,
-            annual_costs=annual_costs_list,
+            annual_costs=annual_costs_collection,
             npv_costs=npv_costs_obj,
             total_nominal_cost=total_nominal_cost,
-            npv_total=npv_costs['total'],
-            lcod_per_km=lcod_per_km,
+            total_tco=npv_costs['total'],
+            lcod=lcod,
+            calculation_date=date.today()
         )
+        
+        # Store original scenario for testing
+        result._scenario = scenario
+        
+        return result
     
     def compare_results(self, result1: TCOOutput, result2: TCOOutput) -> ComparisonResult:
         """
@@ -229,33 +246,27 @@ class TCOCalculator:
         Returns:
             ComparisonResult: The comparison between the two TCO results
         """
-        # Calculate NPV difference
-        npv_difference = result2.npv_total - result1.npv_total
+        # Use utility functions from terminology module for consistency
+        from tco_model.terminology import calculate_cost_difference
         
-        # Calculate NPV difference percentage
-        npv_difference_percentage = (
-            (npv_difference / abs(result1.npv_total)) * 100 
-            if result1.npv_total != 0 else 0
+        # Calculate TCO difference and percentage
+        tco_difference, tco_percentage = calculate_cost_difference(
+            result1.total_tco, result2.total_tco
         )
         
-        # Calculate LCOD difference
-        lcod_difference = result2.lcod_per_km - result1.lcod_per_km
-        
-        # Calculate LCOD difference percentage
-        lcod_difference_percentage = (
-            (lcod_difference / abs(result1.lcod_per_km)) * 100
-            if result1.lcod_per_km != 0 else 0
+        # Calculate LCOD difference and percentage
+        lcod_difference, lcod_difference_percentage = calculate_cost_difference(
+            result1.lcod, result2.lcod
         )
         
         # Calculate payback year (if applicable)
         payback_year = self._calculate_payback_year(result1, result2)
         
-        # Return comparison result
         return ComparisonResult(
             scenario_1=result1,
             scenario_2=result2,
-            npv_difference=npv_difference,
-            npv_difference_percentage=npv_difference_percentage,
+            tco_difference=tco_difference,
+            tco_percentage=tco_percentage,
             lcod_difference=lcod_difference,
             lcod_difference_percentage=lcod_difference_percentage,
             payback_year=payback_year
@@ -275,9 +286,12 @@ class TCOCalculator:
         Returns:
             Optional[int]: The payback year, or None if there is no payback
         """
-        # Get annual costs
-        costs1 = [cost.total for cost in result1.annual_costs]
-        costs2 = [cost.total for cost in result2.annual_costs]
+        # Constants for readability
+        NO_PAYBACK = None
+        
+        # Get annual costs using the new collection structure
+        costs1 = result1.annual_costs.total  # This now returns a list directly
+        costs2 = result2.annual_costs.total
         
         # Calculate cumulative costs
         cumulative1 = np.cumsum(costs1)
@@ -289,4 +303,4 @@ class TCOCalculator:
                 return year
         
         # No payback within the analysis period
-        return None 
+        return NO_PAYBACK 

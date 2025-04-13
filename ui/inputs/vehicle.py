@@ -16,6 +16,7 @@ from utils.helpers import (
     initialize_nested_state,
     format_currency
 )
+from ui.guide import add_tooltips_to_ui
 
 
 # Constants for state keys
@@ -38,6 +39,9 @@ def render_vehicle_inputs(vehicle_number: int) -> None:
     Args:
         vehicle_number: The vehicle number (1 or 2)
     """
+    # Get tooltips
+    tooltips = add_tooltips_to_ui()
+    
     state_prefix = f"vehicle_{vehicle_number}_input"
     
     # Get current vehicle type to determine which specialized inputs to show
@@ -89,7 +93,7 @@ def render_vehicle_inputs(vehicle_number: int) -> None:
                                            400000.0 if vehicle_type == VehicleType.BATTERY_ELECTRIC.value else 200000.0)),
                 format="%.2f",
                 key=f"{state_prefix}.vehicle.{STATE_PURCHASE_PRICE}_input",
-                help="The current purchase price of the vehicle",
+                help=tooltips.get("vehicle.purchase_price", "The current purchase price of the vehicle"),
             )
             set_safe_state_value(f"{state_prefix}.vehicle.{STATE_PURCHASE_PRICE}", purchase_price)
         
@@ -118,7 +122,7 @@ def render_vehicle_inputs(vehicle_number: int) -> None:
                                            26.0 if vehicle_type == VehicleType.BATTERY_ELECTRIC.value else 28.0)),
                 format="%.1f",
                 key=f"{state_prefix}.vehicle.{STATE_MAX_PAYLOAD}_input",
-                help="Maximum payload capacity in tonnes",
+                help=tooltips.get("vehicle.payload_capacity", "Maximum payload capacity in tonnes"),
             )
             set_safe_state_value(f"{state_prefix}.vehicle.{STATE_MAX_PAYLOAD}", max_payload)
         
@@ -137,21 +141,22 @@ def render_vehicle_inputs(vehicle_number: int) -> None:
     
     # Vehicle type-specific parameters
     if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
-        render_bet_parameters(vehicle_number, state_prefix)
+        render_bet_parameters(vehicle_number, state_prefix, tooltips)
     else:
-        render_diesel_parameters(vehicle_number, state_prefix)
+        render_diesel_parameters(vehicle_number, state_prefix, tooltips)
     
     # Display key metrics calculated from inputs
     display_derived_metrics(vehicle_number, state_prefix, vehicle_type)
 
 
-def render_bet_parameters(vehicle_number: int, state_prefix: str) -> None:
+def render_bet_parameters(vehicle_number: int, state_prefix: str, tooltips: Dict[str, str]) -> None:
     """
     Render the UI components for BET-specific parameters.
     
     Args:
         vehicle_number: The vehicle number (1 or 2)
         state_prefix: The state prefix for session state access
+        tooltips: Dictionary of tooltips for UI components
     """
     # Create expandable sections for different BET parameter categories
     with st.expander("Battery Parameters", expanded=False):
@@ -165,7 +170,7 @@ def render_bet_parameters(vehicle_number: int, state_prefix: str) -> None:
                 value=float(get_safe_state_value(f"{state_prefix}.vehicle.battery.capacity_kwh", 400.0)),
                 format="%.1f",
                 key=f"{state_prefix}.vehicle.battery.capacity_kwh_input",
-                help="Total battery capacity in kilowatt-hours",
+                help=tooltips.get("vehicle.battery.capacity", "Total battery capacity in kilowatt-hours"),
             )
             set_safe_state_value(f"{state_prefix}.vehicle.battery.capacity_kwh", battery_capacity)
             
@@ -360,13 +365,14 @@ def render_bet_parameters(vehicle_number: int, state_prefix: str) -> None:
             set_safe_state_value(f"{state_prefix}.vehicle.infrastructure.grid_upgrade_cost", grid_upgrade)
 
 
-def render_diesel_parameters(vehicle_number: int, state_prefix: str) -> None:
+def render_diesel_parameters(vehicle_number: int, state_prefix: str, tooltips: Dict[str, str]) -> None:
     """
     Render the UI components for diesel-specific parameters.
     
     Args:
         vehicle_number: The vehicle number (1 or 2)
         state_prefix: The state prefix for session state access
+        tooltips: Dictionary of tooltips for UI components
     """
     # Create expandable sections for different diesel parameter categories
     with st.expander("Engine Parameters", expanded=False):

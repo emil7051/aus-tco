@@ -35,9 +35,10 @@ The TCO Modeller will offer the following core functionalities:
     * TCO Calculation: Calculate the Net Present Value (NPV) of the TCO over the specified analysis period (15 years)
     * Key Metrics: Calculate and display relevant metrics like Levelized Cost of Driving (LCOD) in AUD/km.
     * Interactive Visualizations: Present results using clear and interactive charts (e.g., cumulative TCO, annual cost breakdown, cost component comparison) via Plotly.
+    * Interactive User Guide: Provide comprehensive documentation, tooltips, and example scenarios to help users understand both how to use the tool and interpret the results.
     * Sensitivity Analysis/Simulations: Allow users to vary key parameters (e.g., energy price, discount rate) to see the impact on TCO results.
     * Data Export (Future Goal): Enable users to export scenario inputs and calculated results (e.g., to CSV or Excel).
-    * Default Scenarios: Provide pre-configured default parameters for common Australian heavy vehicle types and operational contexts.
+    * Example Scenarios: Provide pre-configured default parameters for common Australian heavy vehicle types, operational contexts, and use cases (urban delivery, regional distribution, etc.).
 
 ##3. Architecture Overview
 
@@ -87,7 +88,15 @@ aus-heavy-vehicle-tco/
 │   │   └── operational_parameters.yaml
 │   └── vehicles/
 │       ├── default_bet.yaml
-│       └── default_ice.yaml
+│       ├── default_ice.yaml
+│       ├── default_bet_urban.yaml      # Urban delivery BET configuration
+│       ├── default_ice_urban.yaml      # Urban delivery diesel configuration
+│       ├── default_bet_regional.yaml   # Regional distribution BET configuration
+│       ├── default_ice_regional.yaml   # Regional distribution diesel configuration
+│       ├── default_bet_longhaul.yaml   # Long-haul BET configuration (planned)
+│       ├── default_ice_longhaul.yaml   # Long-haul diesel configuration (planned)
+│       ├── default_bet_financed.yaml   # Financing example - loan (planned)
+│       └── default_bet_cash.yaml       # Financing example - cash purchase (planned)
 ├── tco_model/            # Core TCO calculation logic and data models
 │   ├── __init__.py
 │   ├── calculator.py     # Main TCO calculation engine
@@ -97,8 +106,20 @@ aus-heavy-vehicle-tco/
 │   └── vehicles.py       # Vehicle-specific data loading/handling
 ├── ui/                   # Streamlit UI modules/components
 │   ├── __init__.py
-│   ├── inputs.py         # Modules for input sections (Vehicle, Ops, Econ)
-│   ├── results.py        # Modules for displaying results (Tables, Charts)
+│   ├── guide.py          # Interactive user guide, tooltips, and tutorials
+│   ├── inputs/           # Input UI modules
+│   │   ├── __init__.py
+│   │   ├── vehicle.py    # Vehicle parameters input UI
+│   │   ├── operational.py # Operational parameters input UI
+│   │   ├── economic.py   # Economic parameters input UI
+│   │   └── financing.py  # Financing parameters input UI
+│   ├── results/          # Results display modules
+│   │   ├── __init__.py
+│   │   ├── summary.py    # Summary tables and key metrics
+│   │   ├── charts.py     # Interactive visualizations
+│   │   ├── detailed.py   # Detailed results breakdown
+│   │   ├── display.py    # Helper functions for results display
+│   │   └── utils.py      # Result formatting utilities
 │   └── sidebar.py        # Sidebar configuration/elements
 ├── utils/                # Utility functions (e.g., data loading, formatting)
 │   ├── __init__.py
@@ -194,6 +215,31 @@ if 'initialized' not in st.session_state:
    3. Use on_change callbacks attached to widgets to trigger specific state update logic or validation functions, rather than relying solely on the script rerun.
 
    4. Develop utility functions to safely get/set potentially nested values within st.session_state to avoid KeyError.
+
+###4.7. Interactive User Guide (ui/guide.py)
+
+Purpose: Provide comprehensive documentation, tooltips, and example scenarios to help users understand the tool and interpret results.
+
+* Components:
+   1. Main Guide Content: Structured into tabs covering getting started, example scenarios, step-by-step tutorials, and results interpretation.
+   2. Example Scenarios: Predefined configurations demonstrating different use cases:
+      * Urban Delivery: Short-haul operations with frequent stops and lower daily distances
+      * Regional Distribution: Medium-haul routes between regional centers
+      * Long-Haul Transport: Long-distance interstate transport operations
+      * Financing Options Comparison: Different financing methods for the same vehicle type
+   3. Tooltips System: Contextual help for input fields, providing definitions and explanations without cluttering the UI
+   4. Step-by-Step Tutorial: Walkthrough explaining how to use each section of the application
+
+* Implementation: 
+   * Modular design with separate rendering functions for each guide section
+   * Example scenarios linked to vehicle configuration files in config/vehicles/
+   * Tooltips accessible via a dictionary mapping field keys to help text
+   * Tutorial steps structured as expandable sections with visual indicators
+
+* Integration: 
+   * Guide accessible via a dedicated tab in the main application
+   * Tooltips integrated with input fields across the UI
+   * Example scenarios loadable via buttons that update the application state
 
 ##5. Testing Strategy (tests/)
    * Framework: pytest

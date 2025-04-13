@@ -10,7 +10,8 @@ from typing import Dict, Any
 
 from tco_model.models import TCOOutput, ComparisonResult
 from utils.helpers import format_currency, format_percentage
-from ui.results.utils import COMPONENT_KEYS, COMPONENT_LABELS
+from ui.results.utils import get_component_value
+from tco_model.terminology import UI_COMPONENT_KEYS, UI_COMPONENT_LABELS
 
 
 def render_summary(results: Dict[str, TCOOutput], comparison: ComparisonResult):
@@ -42,8 +43,8 @@ def render_summary(results: Dict[str, TCOOutput], comparison: ComparisonResult):
             "Percentage Difference",
         ],
         result1.vehicle_name: [
-            format_currency(result1.npv_total),
-            f"{format_currency(result1.lcod_per_km)}/km",
+            format_currency(result1.total_tco),
+            f"{format_currency(result1.lcod)}/km",
             f"{result1.analysis_period_years} years",
             f"{result1.total_distance_km / result1.analysis_period_years:,.0f} km",
             f"{result1.total_distance_km:,.0f} km",
@@ -52,14 +53,14 @@ def render_summary(results: Dict[str, TCOOutput], comparison: ComparisonResult):
             "",
         ],
         result2.vehicle_name: [
-            format_currency(result2.npv_total),
-            f"{format_currency(result2.lcod_per_km)}/km",
+            format_currency(result2.total_tco),
+            f"{format_currency(result2.lcod)}/km",
             f"{result2.analysis_period_years} years",
             f"{result2.total_distance_km / result2.analysis_period_years:,.0f} km",
             f"{result2.total_distance_km:,.0f} km",
             "✓" if comparison.cheaper_option == 2 else "",
-            format_currency(abs(comparison.npv_difference)),
-            f"{abs(comparison.npv_difference_percentage):.1f}% {'higher' if comparison.npv_difference > 0 else 'lower'}",
+            format_currency(abs(comparison.tco_difference)),
+            f"{abs(comparison.tco_percentage):.1f}% {'higher' if comparison.tco_difference > 0 else 'lower'}",
         ],
     }
     
@@ -70,23 +71,23 @@ def render_summary(results: Dict[str, TCOOutput], comparison: ComparisonResult):
     st.subheader("Cost Breakdown (NPV)")
     
     # Create cost breakdown table
-    cost_components = COMPONENT_KEYS
-    cost_labels = [COMPONENT_LABELS[component] for component in cost_components]
+    cost_components = UI_COMPONENT_KEYS
+    cost_labels = [UI_COMPONENT_LABELS[component] for component in cost_components]
     cost_labels.append("Total")  # Add total row
     cost_components = list(cost_components) + ["total"]  # Add total to components
     
     breakdown_data = {
         "Component": cost_labels,
         result1.vehicle_name: [
-            format_currency(getattr(result1.npv_costs, component) if component != "total" else result1.npv_total)
+            format_currency(get_component_value(result1, component) if component != "total" else result1.total_tco)
             for component in cost_components
         ],
         result2.vehicle_name: [
-            format_currency(getattr(result2.npv_costs, component) if component != "total" else result2.npv_total)
+            format_currency(get_component_value(result2, component) if component != "total" else result2.total_tco)
             for component in cost_components
         ],
         "Difference": [
-            format_currency(comparison.component_differences.get(component, 0) if component != "total" else comparison.npv_difference)
+            format_currency(comparison.component_differences.get(component, 0) if component != "total" else comparison.tco_difference)
             for component in cost_components
         ],
     }

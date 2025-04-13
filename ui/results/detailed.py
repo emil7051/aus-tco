@@ -218,48 +218,46 @@ def render_component_details(result1: TCOOutput, result2: TCOOutput):
 
 def render_cost_per_km(result1: TCOOutput, result2: TCOOutput):
     """
-    Render cost per kilometer analysis.
+    Render a detailed breakdown of cost per kilometer.
     
     Args:
         result1: TCO result for the first vehicle
         result2: TCO result for the second vehicle
     """
-    st.subheader("Cost Per Kilometer Analysis")
-    
-    # Use component keys from utils
-    single_components = ["acquisition", "energy", "maintenance", "infrastructure", 
-                       "battery_replacement", "insurance", "registration", 
-                       "carbon_tax", "other_taxes", "residual_value"]
+    st.subheader("Cost per Kilometer Breakdown")
+    st.markdown("This shows the contribution of each cost component to the levelized cost of driving (LCOD).")
     
     try:
-        # Calculate per-km costs
+        # Get total distance for each vehicle
+        dist1 = result1.total_distance_km
+        dist2 = result2.total_distance_km
+        
+        if dist1 == 0 or dist2 == 0:
+            st.warning("Cannot calculate cost per km: distance is zero")
+            return
+        
+        # Get component access utilities
+        from tco_model.terminology import get_component_value
+        from ui.results.utils import get_component_value as ui_get_component
+        
+        # Get standardized component list for the table
+        cost_components = ui_get_component_value("COMPONENT_KEYS")
+        component_labels = ui_get_component_value("COMPONENT_LABELS")
+        
+        # Separate combined components
+        from tco_model.terminology import UI_COMPONENT_MAPPING
+        single_components = [c for c in cost_components]
+        
+        # Calculate cost per km for each component
         v1_km_costs = {}
         v2_km_costs = {}
         
         for component in single_components:
-            if result1.total_distance_km > 0:
-                v1_km_costs[component] = get_component_value(result1, component) / result1.total_distance_km
-            else:
-                v1_km_costs[component] = 0
-                
-            if result2.total_distance_km > 0:
-                v2_km_costs[component] = get_component_value(result2, component) / result2.total_distance_km
-            else:
-                v2_km_costs[component] = 0
-        
-        # Create DataFrame
-        component_labels = {
-            "acquisition": "Acquisition",
-            "energy": "Energy",
-            "maintenance": "Maintenance", 
-            "infrastructure": "Infrastructure",
-            "battery_replacement": "Battery Replacement",
-            "insurance": "Insurance",
-            "registration": "Registration",
-            "carbon_tax": "Carbon Tax",
-            "other_taxes": "Other Taxes",
-            "residual_value": "Residual Value"
-        }
+            v1_value = get_component_value(result1.npv_costs, component)
+            v1_km_costs[component] = v1_value / dist1
+            
+            v2_value = get_component_value(result2.npv_costs, component)
+            v2_km_costs[component] = v2_value / dist2
         
         data = {
             "Component": [component_labels[c] for c in single_components],
@@ -270,9 +268,9 @@ def render_cost_per_km(result1: TCOOutput, result2: TCOOutput):
         
         # Add total row
         data["Component"].append("Total")
-        data[f"{result1.vehicle_name} ($/km)"].append(result1.lcod_per_km)
-        data[f"{result2.vehicle_name} ($/km)"].append(result2.lcod_per_km)
-        data["Difference ($/km)"].append(result2.lcod_per_km - result1.lcod_per_km)
+        data[f"{result1.vehicle_name} ($/km)"].append(result1.lcod)
+        data[f"{result2.vehicle_name} ($/km)"].append(result2.lcod)
+        data["Difference ($/km)"].append(result2.lcod - result1.lcod)
         
         df = pd.DataFrame(data)
         
@@ -285,9 +283,9 @@ def render_cost_per_km(result1: TCOOutput, result2: TCOOutput):
         st.dataframe(df, use_container_width=True)
         
         # Highlight the LCOD difference
-        if result2.lcod_per_km != 0:
-            lcod_diff = result2.lcod_per_km - result1.lcod_per_km
-            lcod_pct = (lcod_diff / result2.lcod_per_km) * 100
+        if result2.lcod != 0:
+            lcod_diff = result2.lcod - result1.lcod
+            lcod_pct = (lcod_diff / result2.lcod) * 100
             
             st.metric(
                 "LCOD Difference",

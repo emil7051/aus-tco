@@ -54,7 +54,8 @@ def load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
 
 def load_config_as_model(file_path: Union[str, Path], model_class: Type[T]) -> T:
     """
-    Load a YAML configuration file and parse it into a Pydantic model.
+    Load a YAML configuration file and parse it into a Pydantic model,
+    using the field mappings from terminology.py.
     
     Args:
         file_path: Path to the YAML file
@@ -63,16 +64,143 @@ def load_config_as_model(file_path: Union[str, Path], model_class: Type[T]) -> T
     Returns:
         Instance of the specified model class
         
-    Raises:
-        FileNotFoundError: If the file doesn't exist
-        yaml.YAMLError: If the file contains invalid YAML
-        ValidationError: If the data doesn't match the model schema
+    Example:
+        >>> vehicle_params = load_config_as_model("config/vehicles/bet_truck.yaml", BETParameters)
     """
+    from tco_model.terminology import CONFIG_FIELD_MAPPINGS
+    
+    # Constants for configuration file sections
+    VEHICLE_INFO_SECTION = 'vehicle_info'
+    VEHICLE_TYPE_FIELD = 'type'
+    
+    # Load raw data
     data = load_yaml_file(file_path)
+    
+    # Get vehicle type for proper mapping
+    vehicle_type = None
+    if VEHICLE_INFO_SECTION in data and VEHICLE_TYPE_FIELD in data[VEHICLE_INFO_SECTION]:
+        vehicle_type = data[VEHICLE_INFO_SECTION][VEHICLE_TYPE_FIELD]
+    
+    # Transform data to model format
+    if vehicle_type and vehicle_type in CONFIG_FIELD_MAPPINGS:
+        # For vehicle parameters, use specific vehicle type mapping
+        model_data = transform_vehicle_config(data, vehicle_type)
+    else:
+        # For other models, transform using convert_config_to_model_format
+        model_data = convert_config_to_model_format(data)
+    
     try:
-        return model_class.parse_obj(data)
+        return model_class.parse_obj(model_data)
     except ValidationError as e:
         raise ValidationError(f"Validation error in {file_path}: {str(e)}", model_class)
+
+
+def map_config_key_to_model_field(config_key: str) -> str:
+    """
+    Map a configuration file key to the corresponding model field name.
+    
+    Args:
+        config_key: The configuration file key to map
+        
+    Returns:
+        str: The corresponding model field name
+        
+    Example:
+        >>> model_field = map_config_key_to_model_field("energy_consumption.base_rate_kwh_per_km")
+        >>> print(model_field)  # "energy_consumption.base_rate"
+    """
+    from tco_model.terminology import CONFIG_TO_MODEL_MAPPING
+    return CONFIG_TO_MODEL_MAPPING.get(config_key, config_key)
+
+
+def map_model_field_to_config_key(model_field: str) -> str:
+    """
+    Map a model field name to the corresponding configuration file key.
+    
+    Args:
+        model_field: The model field name to map
+        
+    Returns:
+        str: The corresponding configuration file key
+        
+    Example:
+        >>> config_key = map_model_field_to_config_key("energy_consumption.base_rate")
+        >>> print(config_key)  # "energy_consumption.base_rate_kwh_per_km"
+    """
+    from tco_model.terminology import CONFIG_TO_MODEL_MAPPING
+    
+    # Create reverse mapping once and cache it in the function
+    if not hasattr(map_model_field_to_config_key, "reverse_mapping"):
+        map_model_field_to_config_key.reverse_mapping = {
+            v: k for k, v in CONFIG_TO_MODEL_MAPPING.items()
+        }
+    
+    return map_model_field_to_config_key.reverse_mapping.get(model_field, model_field)
+
+
+def transform_vehicle_config(config_data: Dict[str, Any], vehicle_type: str) -> Dict[str, Any]:
+    """
+    Transform vehicle configuration data using the standardized field mappings.
+    
+    Args:
+        config_data: Raw configuration data
+        vehicle_type: Type of vehicle ('battery_electric' or 'diesel')
+        
+    Returns:
+        Dict with transformed data mapped to model fields
+    """
+    from tco_model.terminology import CONFIG_FIELD_MAPPINGS
+    from utils.config_utils import get_nested_config_value, set_nested_model_value
+    
+    # Create target dictionary
+    model_data = {}
+    
+    # Get mapping for this vehicle type
+    if vehicle_type not in CONFIG_FIELD_MAPPINGS:
+        return config_data  # Return as-is if no mapping found
+        
+    mappings = CONFIG_FIELD_MAPPINGS[vehicle_type]
+    
+    # Apply mappings
+    for config_key, model_key in mappings.items():
+        value = get_nested_config_value(config_data, config_key)
+        if value is not None:
+            set_nested_model_value(model_data, model_key, value)
+    
+    return model_data
+
+
+def convert_config_to_model_format(config_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert general configuration data using the standardized mappings.
+    
+    Args:
+        config_data: Raw configuration data
+        
+    Returns:
+        Dict with transformed data mapped to model fields
+    """
+    from tco_model.terminology import ECONOMIC_CONFIG_MAPPING, OPERATIONAL_CONFIG_MAPPING
+    from utils.config_utils import get_nested_config_value, set_nested_model_value
+    
+    # Create target dictionary
+    model_data = {}
+    
+    # Apply economic parameter mappings if present
+    if 'economic' in config_data or 'general' in config_data or 'financing' in config_data:
+        for config_key, model_key in ECONOMIC_CONFIG_MAPPING.items():
+            value = get_nested_config_value(config_data, config_key)
+            if value is not None:
+                set_nested_model_value(model_data, f"economic.{model_key}", value)
+    
+    # Apply operational parameter mappings if present
+    if 'operational' in config_data:
+        for config_key, model_key in OPERATIONAL_CONFIG_MAPPING.items():
+            value = get_nested_config_value(config_data, f"operational.{config_key}")
+            if value is not None:
+                set_nested_model_value(model_data, f"operational.{model_key}", value)
+    
+    return model_data
 
 
 def load_economic_parameters(config_path: Optional[str] = None) -> EconomicParameters:
@@ -431,28 +559,42 @@ def find_available_vehicle_configs() -> Dict[VehicleType, List[str]]:
     Find all available vehicle configuration files in the config directory.
     
     Returns:
-        Dict mapping vehicle types to lists of available config names
+        Dictionary mapping vehicle types to lists of available configuration names
     """
     result = {
         VehicleType.BATTERY_ELECTRIC: [],
         VehicleType.DIESEL: []
     }
     
-    # Get all YAML files in the vehicles directory
-    yaml_files = glob.glob(os.path.join(settings.vehicles_config_path, "*.yaml"))
+    vehicles_dir = settings.vehicles_config_path
     
-    for file_path in yaml_files:
+    # Find all YAML files in the vehicles directory
+    for file_path in glob.glob(os.path.join(vehicles_dir, "*.yaml")):
         try:
-            data = load_yaml_file(file_path)
-            vehicle_type = data.get('vehicle_info', {}).get('type')
+            # Get just the filename without extension
+            filename = os.path.basename(file_path).replace(".yaml", "")
             
-            if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
-                result[VehicleType.BATTERY_ELECTRIC].append(os.path.basename(file_path).split('.')[0])
-            elif vehicle_type == VehicleType.DIESEL.value:
-                result[VehicleType.DIESEL].append(os.path.basename(file_path).split('.')[0])
-        except (FileNotFoundError, yaml.YAMLError, KeyError):
-            # Skip files with errors
+            # Load the file to determine vehicle type
+            data = load_yaml_file(file_path)
+            vehicle_info = data.get('vehicle_info', {})
+            
+            # Get vehicle type from the config file
+            vehicle_type_str = vehicle_info.get('type', '').lower()
+            
+            # Map to the appropriate VehicleType and add to result
+            if vehicle_type_str == 'battery_electric':
+                result[VehicleType.BATTERY_ELECTRIC].append(filename)
+            elif vehicle_type_str == 'diesel':
+                result[VehicleType.DIESEL].append(filename)
+            
+        except Exception as e:
+            # Skip files that can't be loaded properly
+            print(f"Error loading vehicle config {file_path}: {str(e)}")
             continue
+    
+    # Sort the lists so they appear in a consistent order
+    for vehicle_type in result:
+        result[vehicle_type].sort()
     
     return result
 

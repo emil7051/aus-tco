@@ -8,9 +8,13 @@ providing strong typing, validation, and structure to the data.
 from datetime import date
 from enum import Enum
 from typing import Dict, List, Literal, Optional, Tuple, Union
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, validator, root_validator, PrivateAttr
 from pydantic_settings import BaseSettings
 import numpy as np
+import warnings
+
+# Remove this import to avoid circular imports
+# from tco_model.calculator import TCOCalculator
 
 
 # --- Utility Types and Enums ---
@@ -173,6 +177,7 @@ class EngineParameters(BaseModel):
     euro_emission_standard: str = Field(..., description="Euro emission standard of the engine")
     adblue_required: bool = Field(False, description="Whether AdBlue (DEF) is required")
     adblue_consumption_percent_of_diesel: Optional[float] = Field(None, ge=0, le=1, description="AdBlue consumption as a percentage of diesel consumption")
+    co2_per_liter: float = Field(2.68, gt=0, description="CO2 emissions in kg per liter of diesel")
 
 
 class EnergyConsumptionParameters(BaseModel):
@@ -482,6 +487,15 @@ class OperationalParameters(BaseModel):
             if operating_days > 0:
                 values['daily_distance_km'] = values['annual_distance_km'] / operating_days
         return values
+        
+    # Note: This is a compatibility property that redirects to economic parameters
+    # Tests expect analysis_period in operational parameters, but it's defined in economic parameters
+    @property
+    def analysis_period(self):
+        """Compatibility property - analysis period should be accessed from economic parameters."""
+        # This will be accessed through a ScenarioInput instance, which doesn't provide direct
+        # access to economic parameters from here. Tests need to be updated to use the correct location.
+        raise AttributeError("'analysis_period' should be accessed from 'economic.analysis_period_years'")
 
 
 # --- Vehicle Models ---
@@ -537,6 +551,13 @@ class ScenarioInput(BaseModel):
     economic: EconomicParameters = Field(..., description="Economic parameters")
     financing: FinancingParameters = Field(..., description="Financing parameters")
     created_date: date = Field(default_factory=date.today, description="Date the scenario was created")
+    
+    @property
+    def infrastructure(self):
+        """Access infrastructure from BET vehicle parameters."""
+        if isinstance(self.vehicle, BETParameters) and hasattr(self.vehicle, 'infrastructure'):
+            return self.vehicle.infrastructure
+        return None
 
 
 class AnnualCosts(BaseModel):
@@ -565,6 +586,94 @@ class AnnualCosts(BaseModel):
         return sum_costs
 
 
+class AnnualCostsCollection:
+    """
+    Wrapper for a list of AnnualCosts objects that provides both item access
+    and attribute access to cost components across all years.
+    """
+    
+    def __init__(self, costs: List[AnnualCosts]):
+        self._costs = costs
+        
+    def __getitem__(self, index):
+        """Allow direct indexing to get a specific year."""
+        return self._costs[index]
+    
+    def __len__(self):
+        """Return the number of years."""
+        return len(self._costs)
+    
+    def __iter__(self):
+        """Allow iteration over all years."""
+        return iter(self._costs)
+    
+    @property
+    def total(self) -> List[float]:
+        """Get total costs for all years."""
+        return [cost.total for cost in self._costs]
+    
+    @property
+    def acquisition(self) -> List[float]:
+        """Get acquisition costs for all years."""
+        return [cost.acquisition for cost in self._costs]
+    
+    @property
+    def energy(self) -> List[float]:
+        """Get energy costs for all years."""
+        return [cost.energy for cost in self._costs]
+    
+    @property
+    def maintenance(self) -> List[float]:
+        """Get maintenance costs for all years."""
+        return [cost.maintenance for cost in self._costs]
+    
+    @property
+    def infrastructure(self) -> List[float]:
+        """Get infrastructure costs for all years."""
+        return [cost.infrastructure for cost in self._costs]
+    
+    @property
+    def battery_replacement(self) -> List[float]:
+        """Get battery replacement costs for all years."""
+        return [cost.battery_replacement for cost in self._costs]
+    
+    @property
+    def insurance(self) -> List[float]:
+        """Get insurance costs for all years."""
+        return [cost.insurance for cost in self._costs]
+    
+    @property
+    def registration(self) -> List[float]:
+        """Get registration costs for all years."""
+        return [cost.registration for cost in self._costs]
+    
+    @property
+    def carbon_tax(self) -> List[float]:
+        """Get carbon tax costs for all years."""
+        return [cost.carbon_tax for cost in self._costs]
+    
+    @property
+    def other_taxes(self) -> List[float]:
+        """Get other taxes costs for all years."""
+        return [cost.other_taxes for cost in self._costs]
+    
+    @property
+    def residual_value(self) -> List[float]:
+        """Get residual values for all years."""
+        return [cost.residual_value for cost in self._costs]
+    
+    # Combined properties to match UI components
+    @property
+    def insurance_registration(self) -> List[float]:
+        """Get combined insurance and registration costs for all years."""
+        return [cost.insurance + cost.registration for cost in self._costs]
+    
+    @property
+    def taxes_levies(self) -> List[float]:
+        """Get combined taxes and levies for all years."""
+        return [cost.carbon_tax + cost.other_taxes for cost in self._costs]
+
+
 class NPVCosts(BaseModel):
     """Net Present Value of costs over the analysis period."""
     acquisition: float = Field(0, description="NPV of acquisition costs")
@@ -580,13 +689,30 @@ class NPVCosts(BaseModel):
     
     @property
     def total(self) -> float:
-        """Calculate total NPV."""
-        # Sum all NPV costs
-        sum_npv = (self.acquisition + self.energy + self.maintenance + 
-                  self.infrastructure + self.battery_replacement +
-                  self.insurance + self.registration +
-                  self.carbon_tax + self.other_taxes + self.residual_value)
-        return sum_npv
+        """Calculate total NPV cost."""
+        return (
+            self.acquisition +
+            self.energy +
+            self.maintenance +
+            self.infrastructure +
+            self.battery_replacement +
+            self.insurance +
+            self.registration +
+            self.carbon_tax +
+            self.other_taxes +
+            self.residual_value
+        )
+    
+    # New combined properties to match UI components
+    @property
+    def insurance_registration(self) -> float:
+        """Combined insurance and registration costs."""
+        return self.insurance + self.registration
+    
+    @property
+    def taxes_levies(self) -> float:
+        """Combined carbon tax and other taxes."""
+        return self.carbon_tax + self.other_taxes
 
 
 class TCOOutput(BaseModel):
@@ -596,27 +722,35 @@ class TCOOutput(BaseModel):
     vehicle_type: VehicleType = Field(..., description="Type of vehicle")
     analysis_period_years: int = Field(..., ge=1, description="Analysis period in years")
     total_distance_km: float = Field(..., gt=0, description="Total distance over analysis period")
-    annual_costs: List[AnnualCosts] = Field(..., description="Annual breakdown of costs")
+    annual_costs: AnnualCostsCollection = Field(..., description="Annual breakdown of costs")
     npv_costs: NPVCosts = Field(..., description="Net Present Value of costs")
+    total_tco: float = Field(..., description="Total cost of ownership (NPV)")
+    lcod: float = Field(..., description="Levelized Cost of Driving per km")
     total_nominal_cost: float = Field(..., description="Total nominal cost over analysis period")
-    npv_total: float = Field(..., description="NPV of total cost")
-    lcod_per_km: float = Field(..., description="Levelized Cost of Driving per km")
     calculation_date: date = Field(default_factory=date.today, description="Date of calculation")
+    _scenario: Optional[ScenarioInput] = PrivateAttr(default=None)
     
+    @property
+    def scenario(self) -> Optional[ScenarioInput]:
+        """Return the original scenario for testing purposes."""
+        return self._scenario
+    
+    # All existing properties remain (except for the removed temporary aliases)
+    # Keep existing total calculation properties
     @property
     def total_acquisition_cost(self) -> float:
         """Calculate total nominal acquisition cost."""
-        return sum(year.acquisition for year in self.annual_costs)
+        return sum(cost.acquisition for cost in self.annual_costs)
     
     @property
     def total_energy_cost(self) -> float:
         """Calculate total nominal energy cost."""
-        return sum(year.energy for year in self.annual_costs)
+        return sum(cost.energy for cost in self.annual_costs)
     
     @property
     def total_maintenance_cost(self) -> float:
         """Calculate total nominal maintenance cost."""
-        return sum(year.maintenance for year in self.annual_costs)
+        return sum(cost.maintenance for cost in self.annual_costs)
     
     @property
     def total_other_costs(self) -> float:
@@ -629,50 +763,67 @@ class ComparisonResult(BaseModel):
     """Comparison between two TCO results."""
     scenario_1: TCOOutput
     scenario_2: TCOOutput
-    npv_difference: float
-    npv_difference_percentage: float
+    
+    # Renamed from npv_difference
+    tco_difference: float
+    
+    # Renamed from npv_difference_percentage
+    tco_percentage: float
+    
     lcod_difference: float
     lcod_difference_percentage: float
     payback_year: Optional[int] = None
     
+    @property
+    def component_differences(self) -> Dict[str, float]:
+        """Calculate differences between cost components."""
+        # Use consistent naming from terminology module
+        from tco_model.terminology import UI_COMPONENT_KEYS, get_component_value
+        
+        result = {}
+        # Loop through standardized component keys from terminology
+        for component in UI_COMPONENT_KEYS:
+            val1 = get_component_value(self.scenario_1.npv_costs, component)
+            val2 = get_component_value(self.scenario_2.npv_costs, component)
+            result[component] = val2 - val1
+        return result
+    
+    @property
+    def cheaper_option(self) -> int:
+        """Return 1 if scenario_1 is cheaper, 2 if scenario_2 is cheaper."""
+        return 1 if self.tco_difference > 0 else 2
+    
+    # Temporary compatibility aliases have been removed
+    
     @classmethod
     def create(cls, scenario_1: TCOOutput, scenario_2: TCOOutput):
         """Create a comparison between two TCO results."""
-        # Calculate differences
-        npv_diff = scenario_1.npv_total - scenario_2.npv_total
-        npv_diff_pct = (npv_diff / scenario_2.npv_total) * 100 if scenario_2.npv_total != 0 else float('inf')
+        # Calculate differences using new field names
+        tco_diff = scenario_2.total_tco - scenario_1.total_tco
         
-        lcod_diff = scenario_1.lcod_per_km - scenario_2.lcod_per_km
-        lcod_diff_pct = (lcod_diff / scenario_2.lcod_per_km) * 100 if scenario_2.lcod_per_km != 0 else float('inf')
+        # Use helper function from terminology to calculate percentage difference
+        from tco_model.terminology import calculate_cost_difference
+        _, tco_diff_pct = calculate_cost_difference(scenario_1.total_tco, scenario_2.total_tco)
+            
+        lcod_diff = scenario_2.lcod - scenario_1.lcod
         
-        # Calculate payback year if applicable
-        payback_year = None
-        if npv_diff < 0:  # Scenario 1 is cheaper overall
-            # Calculate cumulative costs for each year
-            cumulative_1 = [0]
-            cumulative_2 = [0]
-            
-            for i in range(len(scenario_1.annual_costs)):
-                cumulative_1.append(cumulative_1[-1] + scenario_1.annual_costs[i].total)
-                cumulative_2.append(cumulative_2[-1] + scenario_2.annual_costs[i].total)
-            
-            # Find the first year where cumulative cost of scenario 1
-            # becomes less than scenario 2
-            for year in range(1, len(cumulative_1)):
-                if cumulative_1[year] < cumulative_2[year]:
-                    payback_year = year
-                    break
+        # Use same helper function for consistency
+        _, lcod_diff_pct = calculate_cost_difference(scenario_1.lcod, scenario_2.lcod)
+        
+        # Calculate payback year
+        from tco_model.calculator import TCOCalculator
+        payback_calculator = TCOCalculator()
+        payback_year = payback_calculator._calculate_payback_year(scenario_1, scenario_2)
         
         return cls(
             scenario_1=scenario_1,
             scenario_2=scenario_2,
-            npv_difference=npv_diff,
-            npv_difference_percentage=npv_diff_pct,
+            tco_difference=tco_diff,
+            tco_percentage=tco_diff_pct,
             lcod_difference=lcod_diff,
             lcod_difference_percentage=lcod_diff_pct,
             payback_year=payback_year
         )
-
 
 # --- App Settings and Configuration ---
 

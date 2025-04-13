@@ -8,8 +8,8 @@ for different scenarios.
 import pytest
 import numpy as np
 
+from tco_model.models import VehicleType, TCOOutput, AnnualCosts, NPVCosts, AnnualCostsCollection
 from tco_model.calculator import TCOCalculator
-from tco_model.models import TCOOutput, AnnualCosts
 
 
 class TestPaybackCalculation:
@@ -20,63 +20,97 @@ class TestPaybackCalculation:
         # Create a calculator instance
         calculator = TCOCalculator()
         
+        # Create mock NPVCosts
+        npv_costs1 = NPVCosts(
+            acquisition=85000,
+            energy=30000,
+            maintenance=15000,
+            infrastructure=18000,
+            battery_replacement=0,
+            insurance=15000,
+            registration=3000,
+            carbon_tax=0,
+            other_taxes=0,
+            residual_value=-30000
+        )
+        
+        # Create a list of annual costs
+        annual_costs1 = [
+            AnnualCosts(year=0, calendar_year=2023, acquisition=100000, energy=10000, maintenance=5000, 
+                       infrastructure=20000, battery_replacement=0, insurance=5000, registration=1000, 
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=10000, maintenance=5000, 
+                       infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=10000, maintenance=5000, 
+                       infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=3, calendar_year=2026, acquisition=0, energy=10000, maintenance=5000, 
+                       infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=4, calendar_year=2027, acquisition=0, energy=10000, maintenance=5000, 
+                       infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
+                       carbon_tax=0, other_taxes=0, residual_value=-40000)
+        ]
+        
         # Create mock TCOOutput objects with annual costs that have a clear payback period
         result1 = TCOOutput(
             scenario_name="Scenario1",
             vehicle_name="Vehicle1",
-            vehicle_type="bet",
+            vehicle_type=VehicleType.BATTERY_ELECTRIC,
             analysis_period_years=5,
             total_distance_km=500000,
-            annual_costs=[
-                AnnualCosts(year=0, calendar_year=2023, acquisition=100000, energy=10000, maintenance=5000, 
-                           infrastructure=20000, battery_replacement=0, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=141000),
-                AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=10000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=22000),
-                AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=10000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=22000),
-                AnnualCosts(year=3, calendar_year=2026, acquisition=0, energy=10000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=22000),
-                AnnualCosts(year=4, calendar_year=2027, acquisition=0, energy=10000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=-40000, total=-18000)
-            ],
-            npv_costs=None,
+            annual_costs=AnnualCostsCollection(annual_costs1),
+            npv_costs=npv_costs1,
             total_nominal_cost=189000,
-            npv_total=172000,
-            lcod_per_km=0.344
+            total_tco=172000,
+            lcod=0.344
         )
+        
+        # Create 2nd mock NPVCosts object
+        npv_costs2 = NPVCosts(
+            acquisition=75000,
+            energy=50000,
+            maintenance=18000,
+            infrastructure=0,
+            battery_replacement=0,
+            insurance=10000,
+            registration=5000,
+            carbon_tax=5000,
+            other_taxes=2000,
+            residual_value=-25000
+        )
+        
+        # Create a list of annual costs for the second scenario
+        annual_costs2 = [
+            AnnualCosts(year=0, calendar_year=2023, acquisition=80000, energy=20000, maintenance=7000,
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000,
+                       carbon_tax=2000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=20000, maintenance=7000,
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000,
+                       carbon_tax=2000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=20000, maintenance=7000,
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000,
+                       carbon_tax=2000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=3, calendar_year=2026, acquisition=0, energy=20000, maintenance=7000,
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000,
+                       carbon_tax=2000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=4, calendar_year=2027, acquisition=0, energy=20000, maintenance=7000,
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000,
+                       carbon_tax=2000, other_taxes=1000, residual_value=-30000)
+        ]
         
         result2 = TCOOutput(
             scenario_name="Scenario2",
             vehicle_name="Vehicle2",
-            vehicle_type="diesel",
+            vehicle_type=VehicleType.DIESEL,
             analysis_period_years=5,
             total_distance_km=500000,
-            annual_costs=[
-                AnnualCosts(year=0, calendar_year=2023, acquisition=80000, energy=20000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=0, total=116000),
-                AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=20000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=0, total=36000),
-                AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=20000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=0, total=36000),
-                AnnualCosts(year=3, calendar_year=2026, acquisition=0, energy=20000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=0, total=36000),
-                AnnualCosts(year=4, calendar_year=2027, acquisition=0, energy=20000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=-30000, total=6000)
-            ],
-            npv_costs=None,
+            annual_costs=AnnualCostsCollection(annual_costs2),
+            npv_costs=npv_costs2,
             total_nominal_cost=230000,
-            npv_total=210000,
-            lcod_per_km=0.42
+            total_tco=210000,
+            lcod=0.42
         )
         
         # The payback year should be 3
@@ -95,29 +129,73 @@ class TestPaybackCalculation:
         # Create a calculator instance
         calculator = TCOCalculator()
         
+        # Create mock NPVCosts for the remaining scenarios
+        npv_costs2 = NPVCosts(
+            acquisition=70000,
+            energy=40000,
+            maintenance=20000,
+            infrastructure=0,
+            battery_replacement=0,
+            insurance=12000,
+            registration=5000,
+            carbon_tax=3000,
+            other_taxes=2000,
+            residual_value=-20000
+        )
+        
+        # Create annual costs for first scenario
+        annual_costs1 = [
+            AnnualCosts(year=0, calendar_year=2023, acquisition=100000, energy=15000, maintenance=5000,
+                       infrastructure=20000, battery_replacement=0, insurance=5000, registration=1000,
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=15000, maintenance=5000,
+                       infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000,
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=15000, maintenance=5000,
+                       infrastructure=1000, battery_replacement=20000, insurance=5000, registration=1000,
+                       carbon_tax=0, other_taxes=0, residual_value=-30000)
+        ]
+        
         # Create mock TCOOutput objects where the first option never becomes cheaper
         result1 = TCOOutput(
             scenario_name="NeverCheaper",
             vehicle_name="Vehicle1",
-            vehicle_type="bet",
+            vehicle_type=VehicleType.BATTERY_ELECTRIC,
             analysis_period_years=3,
             total_distance_km=300000,
-            annual_costs=[
-                AnnualCosts(year=0, calendar_year=2023, acquisition=100000, energy=15000, maintenance=5000, 
-                           infrastructure=20000, battery_replacement=0, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=146000),
-                AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=15000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=0, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=27000),
-                AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=15000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=20000, insurance=5000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=-30000, total=17000)
-            ],
-            npv_costs=None,
+            annual_costs=AnnualCostsCollection(annual_costs1),
+            npv_costs=npv_costs2,
             total_nominal_cost=190000,
-            npv_total=180000,
-            lcod_per_km=0.6
+            total_tco=180000,
+            lcod=0.6
         )
+        
+        # Create a NPV costs object for the second scenario
+        npv_costs_diesel = NPVCosts(
+            acquisition=55000,
+            energy=35000,
+            maintenance=12000,
+            infrastructure=0,
+            battery_replacement=0,
+            insurance=7000,
+            registration=3000,
+            carbon_tax=2500,
+            other_taxes=1500,
+            residual_value=-15000
+        )
+        
+        # Create annual costs for second scenario
+        annual_costs2 = [
+            AnnualCosts(year=0, calendar_year=2023, acquisition=60000, energy=15000, maintenance=5000, 
+                       infrastructure=0, battery_replacement=0, insurance=3000, registration=1000, 
+                       carbon_tax=1000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=15000, maintenance=5000, 
+                       infrastructure=0, battery_replacement=0, insurance=3000, registration=1000, 
+                       carbon_tax=1000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=15000, maintenance=5000, 
+                       infrastructure=0, battery_replacement=0, insurance=3000, registration=1000, 
+                       carbon_tax=1000, other_taxes=1000, residual_value=-20000)
+        ]
         
         result2 = TCOOutput(
             scenario_name="AlwaysCheaper",
@@ -125,21 +203,11 @@ class TestPaybackCalculation:
             vehicle_type="diesel",
             analysis_period_years=3,
             total_distance_km=300000,
-            annual_costs=[
-                AnnualCosts(year=0, calendar_year=2023, acquisition=60000, energy=15000, maintenance=5000, 
-                           infrastructure=0, battery_replacement=0, insurance=3000, registration=1000, 
-                           carbon_tax=1000, other_taxes=1000, residual_value=0, total=86000),
-                AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=15000, maintenance=5000, 
-                           infrastructure=0, battery_replacement=0, insurance=3000, registration=1000, 
-                           carbon_tax=1000, other_taxes=1000, residual_value=0, total=26000),
-                AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=15000, maintenance=5000, 
-                           infrastructure=0, battery_replacement=0, insurance=3000, registration=1000, 
-                           carbon_tax=1000, other_taxes=1000, residual_value=-20000, total=6000)
-            ],
-            npv_costs=None,
+            annual_costs=AnnualCostsCollection(annual_costs2),
+            npv_costs=npv_costs_diesel,
             total_nominal_cost=118000,
-            npv_total=110000,
-            lcod_per_km=0.367
+            total_tco=110000,
+            lcod=0.367
         )
         
         # Cumulative costs:
@@ -156,29 +224,73 @@ class TestPaybackCalculation:
         # Create a calculator instance
         calculator = TCOCalculator()
         
+        # Create mock NPVCosts for the remaining scenarios
+        npv_costs3 = NPVCosts(
+            acquisition=45000,
+            energy=25000,
+            maintenance=13000,
+            infrastructure=9000,
+            battery_replacement=0,
+            insurance=8000,
+            registration=2500,
+            carbon_tax=0,
+            other_taxes=0,
+            residual_value=-18000
+        )
+        
+        # Create annual costs for first scenario
+        annual_costs1 = [
+            AnnualCosts(year=0, calendar_year=2023, acquisition=50000, energy=10000, maintenance=5000,
+                       infrastructure=10000, battery_replacement=0, insurance=3000, registration=1000,
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=10000, maintenance=5000,
+                       infrastructure=1000, battery_replacement=0, insurance=3000, registration=1000,
+                       carbon_tax=0, other_taxes=0, residual_value=0),
+            AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=10000, maintenance=5000,
+                       infrastructure=1000, battery_replacement=0, insurance=3000, registration=1000,
+                       carbon_tax=0, other_taxes=0, residual_value=-20000)
+        ]
+        
         # Create mock TCOOutput objects where the first option is immediately cheaper
         result1 = TCOOutput(
             scenario_name="ImmediatelyCheaper",
             vehicle_name="Vehicle1",
-            vehicle_type="bet",
+            vehicle_type=VehicleType.BATTERY_ELECTRIC,
             analysis_period_years=3,
             total_distance_km=300000,
-            annual_costs=[
-                AnnualCosts(year=0, calendar_year=2023, acquisition=50000, energy=10000, maintenance=5000, 
-                           infrastructure=10000, battery_replacement=0, insurance=3000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=79000),
-                AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=10000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=0, insurance=3000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=0, total=20000),
-                AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=10000, maintenance=5000, 
-                           infrastructure=1000, battery_replacement=0, insurance=3000, registration=1000, 
-                           carbon_tax=0, other_taxes=0, residual_value=-20000, total=0)
-            ],
-            npv_costs=None,
+            annual_costs=AnnualCostsCollection(annual_costs1),
+            npv_costs=npv_costs3,
             total_nominal_cost=99000,
-            npv_total=95000,
-            lcod_per_km=0.317
+            total_tco=95000,
+            lcod=0.317
         )
+        
+        # Create NPV costs for the expensive option
+        npv_costs_expensive = NPVCosts(
+            acquisition=75000,
+            energy=35000,
+            maintenance=15000,
+            infrastructure=0,
+            battery_replacement=0,
+            insurance=9000,
+            registration=5000,
+            carbon_tax=4000,
+            other_taxes=2000,
+            residual_value=-20000
+        )
+        
+        # Create annual costs for second scenario
+        annual_costs2 = [
+            AnnualCosts(year=0, calendar_year=2023, acquisition=80000, energy=15000, maintenance=7000, 
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
+                       carbon_tax=2000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=15000, maintenance=7000, 
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
+                       carbon_tax=2000, other_taxes=1000, residual_value=0),
+            AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=15000, maintenance=7000, 
+                       infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
+                       carbon_tax=2000, other_taxes=1000, residual_value=-25000)
+        ]
         
         result2 = TCOOutput(
             scenario_name="ExpensiveOption",
@@ -186,21 +298,11 @@ class TestPaybackCalculation:
             vehicle_type="diesel",
             analysis_period_years=3,
             total_distance_km=300000,
-            annual_costs=[
-                AnnualCosts(year=0, calendar_year=2023, acquisition=80000, energy=15000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=0, total=111000),
-                AnnualCosts(year=1, calendar_year=2024, acquisition=0, energy=15000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=0, total=31000),
-                AnnualCosts(year=2, calendar_year=2025, acquisition=0, energy=15000, maintenance=7000, 
-                           infrastructure=0, battery_replacement=0, insurance=4000, registration=2000, 
-                           carbon_tax=2000, other_taxes=1000, residual_value=-25000, total=6000)
-            ],
-            npv_costs=None,
+            annual_costs=AnnualCostsCollection(annual_costs2),
+            npv_costs=npv_costs_expensive,
             total_nominal_cost=148000,
-            npv_total=140000,
-            lcod_per_km=0.467
+            total_tco=140000,
+            lcod=0.467
         )
         
         # Cumulative costs:

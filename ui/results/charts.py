@@ -14,8 +14,9 @@ from plotly.subplots import make_subplots
 
 from tco_model.models import TCOOutput, ComparisonResult
 from utils.helpers import format_currency, format_percentage
+from tco_model.terminology import UI_COMPONENT_KEYS, UI_COMPONENT_LABELS
 from ui.results.utils import (
-    COMPONENT_KEYS, COMPONENT_LABELS, get_component_value,
+    get_component_value, get_component_color, get_component_display_order,
     get_chart_settings, apply_chart_theme, get_annual_component_value,
     validate_tco_results
 )
@@ -200,7 +201,7 @@ def render_chart_settings(settings: Dict[str, Any]):
     # Component filter
     st.subheader("Components to Display")
     components = [
-        (key, COMPONENT_LABELS[key]) for key in COMPONENT_KEYS
+        (key, UI_COMPONENT_LABELS[key]) for key in UI_COMPONENT_KEYS
     ]
     
     selected_components = []
@@ -379,7 +380,7 @@ def create_annual_costs_chart(result1: TCOOutput, result2: TCOOutput,
         components = []
         
         # Filter components based on settings
-        for comp in COMPONENT_KEYS:
+        for comp in UI_COMPONENT_KEYS:
             if comp in settings["components_to_show"]:
                 components.append(comp)
         
@@ -414,7 +415,7 @@ def create_annual_costs_chart(result1: TCOOutput, result2: TCOOutput,
         else:
             # Create traces for each component
             for comp in components:
-                comp_label = COMPONENT_LABELS[comp]
+                comp_label = UI_COMPONENT_LABELS[comp]
                 
                 # Get annual values using utility function for consistency
                 v1_values = [get_annual_component_value(result1, comp, year) for year in years]
@@ -476,7 +477,7 @@ def create_cost_components_chart(result1: TCOOutput, result2: TCOOutput, compari
     
     # Define cost components and their labels if not provided
     if not components:
-        components = COMPONENT_KEYS.copy()
+        components = UI_COMPONENT_KEYS.copy()
     
     # Chart title
     title = "Cost Components Distribution (NPV)"
@@ -504,7 +505,7 @@ def create_cost_components_chart(result1: TCOOutput, result2: TCOOutput, compari
             v2_value = max(0, get_component_value(result2, comp))
             
             fig.add_trace(go.Bar(
-                name=COMPONENT_LABELS[comp],
+                name=UI_COMPONENT_LABELS[comp],
                 x=[vehicle1_name, vehicle2_name],
                 y=[v1_value, v2_value],
                 text=[format_currency(v1_value), format_currency(v2_value)],
@@ -518,7 +519,7 @@ def create_cost_components_chart(result1: TCOOutput, result2: TCOOutput, compari
             v2_value = min(0, get_component_value(result2, comp))
             
             fig.add_trace(go.Bar(
-                name=COMPONENT_LABELS[comp],
+                name=UI_COMPONENT_LABELS[comp],
                 x=[vehicle1_name, vehicle2_name],
                 y=[v1_value, v2_value],
                 text=[format_currency(v1_value), format_currency(v2_value)],
@@ -534,8 +535,8 @@ def create_cost_components_chart(result1: TCOOutput, result2: TCOOutput, compari
             
             # Add a trace for each vehicle
             fig.add_trace(go.Bar(
-                name=f"{COMPONENT_LABELS[comp]} - {vehicle1_name}",
-                x=[COMPONENT_LABELS[comp]],
+                name=f"{UI_COMPONENT_LABELS[comp]} - {vehicle1_name}",
+                x=[UI_COMPONENT_LABELS[comp]],
                 y=[v1_value],
                 text=[format_currency(v1_value)],
                 textposition="auto",
@@ -544,8 +545,8 @@ def create_cost_components_chart(result1: TCOOutput, result2: TCOOutput, compari
             ))
             
             fig.add_trace(go.Bar(
-                name=f"{COMPONENT_LABELS[comp]} - {vehicle2_name}",
-                x=[COMPONENT_LABELS[comp]],
+                name=f"{UI_COMPONENT_LABELS[comp]} - {vehicle2_name}",
+                x=[UI_COMPONENT_LABELS[comp]],
                 y=[v2_value],
                 text=[format_currency(v2_value)],
                 textposition="auto",
@@ -559,10 +560,10 @@ def create_cost_components_chart(result1: TCOOutput, result2: TCOOutput, compari
         fig.add_trace(go.Scatter(
             name="Total TCO",
             x=[vehicle1_name, vehicle2_name],
-            y=[result1.npv_total, result2.npv_total],
+            y=[result1.total_tco, result2.total_tco],
             mode="markers+text",
             marker=dict(size=15, color="black", symbol="diamond"),
-            text=[f"Total: {format_currency(result1.npv_total)}", f"Total: {format_currency(result2.npv_total)}"],
+            text=[f"Total: {format_currency(result1.total_tco)}", f"Total: {format_currency(result2.total_tco)}"],
             textposition="top center",
             hovertemplate="%{x}<br>Total TCO: %{y:$,.0f}<extra></extra>",
         ))
@@ -603,7 +604,7 @@ def create_cost_components_pie_chart(result1: TCOOutput, result2: TCOOutput,
     
     # Define cost components and their labels if not provided
     if not components:
-        components = [c for c in COMPONENT_KEYS if c != "residual_value"]
+        components = [c for c in UI_COMPONENT_KEYS if c != "residual_value"]
     
     # Skip residual value for pie chart as it's usually negative
     if "residual_value" in components:
@@ -612,7 +613,7 @@ def create_cost_components_pie_chart(result1: TCOOutput, result2: TCOOutput,
     # Create data for pie charts, handling possible zero totals
     v1_values = [max(0, get_component_value(result1, comp)) for comp in components]
     v2_values = [max(0, get_component_value(result2, comp)) for comp in components]
-    labels = [COMPONENT_LABELS[comp] for comp in components]
+    labels = [UI_COMPONENT_LABELS[comp] for comp in components]
     
     # Check for valid data (non-zero sum)
     if sum(v1_values) == 0 or sum(v2_values) == 0:
@@ -673,3 +674,83 @@ def get_color_sequence():
             return getattr(px.colors.qualitative, color_scheme)
         except AttributeError:
             return px.colors.qualitative.Plotly 
+
+def create_cost_breakdown_chart(result: TCOOutput, height: int = 500) -> go.Figure:
+    """
+    Create a bar chart showing the cost breakdown for a TCO result.
+    
+    Args:
+        result: TCO result to display
+        height: Chart height in pixels
+        
+    Returns:
+        plotly.graph_objects.Figure: The cost breakdown chart
+    """
+    # Get all component values using standardized access
+    component_values = {
+        component: get_component_value(result, component)
+        for component in UI_COMPONENT_KEYS
+    }
+    
+    # Sort components by display order
+    sorted_components = sorted(
+        UI_COMPONENT_KEYS,
+        key=get_component_display_order
+    )
+    
+    # Create sorted lists for chart
+    components = [UI_COMPONENT_LABELS[c] for c in sorted_components]
+    values = [component_values[c] for c in sorted_components]
+    colors = [get_component_color(c) for c in sorted_components]
+    
+    # Create the chart
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=components,
+        y=values,
+        marker_color=colors,
+        text=[format_currency(v) for v in values],
+        textposition='auto'
+    ))
+    
+    # Style the chart
+    fig.update_layout(
+        title=f"Cost Breakdown: {result.vehicle_name}",
+        height=height,
+        yaxis_title="NPV Cost (AUD)"
+    )
+    
+    return fig
+
+def create_tco_breakdown_bar(result1: TCOOutput, result2: TCOOutput, height: int = 400) -> go.Figure:
+    """
+    Create a bar chart comparing total TCO between two vehicles.
+    
+    Args:
+        result1: TCO result for the first vehicle
+        result2: TCO result for the second vehicle
+        height: Height of the chart in pixels
+        
+    Returns:
+        go.Figure: Plotly figure object
+    """
+    from utils.helpers import format_currency
+    
+    # Extract vehicle names
+    vehicle1_name = result1.vehicle_name
+    vehicle2_name = result2.vehicle_name
+    
+    # Create figure
+    fig = go.Figure()
+    
+    # Add trace for total TCO
+    fig.add_trace(go.Bar(
+        name="Total TCO",
+        x=[vehicle1_name, vehicle2_name],
+        y=[result1.total_tco, result2.total_tco],
+        marker_color="#1f77b4",  # Blue
+        text=[f"Total: {format_currency(result1.total_tco)}", f"Total: {format_currency(result2.total_tco)}"],
+        textposition="outside",
+        hovertemplate="%{x}<br>Total TCO: %{y:$,.0f}<extra></extra>"
+    )) 

@@ -6,7 +6,7 @@ that can be used for specific cost components in the TCO model.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Tuple, Union
+from typing import Dict, Any, List, Optional, Tuple, Union, Type, Protocol, Callable
 from datetime import datetime, date
 
 from tco_model.models import (
@@ -18,7 +18,40 @@ from tco_model.models import (
 BASE_CALENDAR_YEAR = 2025
 
 
-class EnergyConsumptionStrategy(ABC):
+class CostCalculationStrategy(ABC):
+    """
+    Abstract base class defining the interface for cost calculation strategies.
+    All cost calculation strategies should inherit from this class.
+    """
+    
+    @abstractmethod
+    def calculate_costs(self, scenario: ScenarioInput, year: int) -> float:
+        """
+        Calculate costs for a specific year.
+        
+        Args:
+            scenario: The scenario input
+            year: The year to calculate costs for (0-based index)
+            
+        Returns:
+            float: The calculated cost for the given year
+        """
+        pass
+    
+    def get_calendar_year(self, year: int) -> int:
+        """
+        Convert analysis year (0-based) to calendar year.
+        
+        Args:
+            year: Analysis year (0-based)
+            
+        Returns:
+            int: Calendar year
+        """
+        return BASE_CALENDAR_YEAR + year
+
+
+class EnergyConsumptionStrategy(CostCalculationStrategy):
     """
     Abstract base class for energy consumption calculation strategies.
     Different vehicle types can implement different calculation methods.
@@ -65,7 +98,7 @@ class EnergyConsumptionStrategy(ABC):
         return BASE_CALENDAR_YEAR + year
 
 
-class BETPowerConsumptionStrategy(EnergyConsumptionStrategy):
+class BETEnergyConsumptionStrategy(EnergyConsumptionStrategy):
     """
     Energy consumption strategy for Battery Electric Trucks (BETs).
     
@@ -78,21 +111,14 @@ class BETPowerConsumptionStrategy(EnergyConsumptionStrategy):
     
     def calculate_consumption(self, scenario: ScenarioInput, year: int) -> float:
         """
-        Calculate the electricity consumption for a BET in a given year.
-        
-        The consumption calculation considers:
-        1. Base energy efficiency of the vehicle (kWh/km)
-        2. Load factor adjustment (efficiency varies with load)
-        3. Operational environment (urban/regional)
-        4. Weather adjustments (if applicable)
-        5. Charging efficiency losses
+        Calculate the energy consumption for a given year.
         
         Args:
             scenario: The scenario input
             year: The year to calculate consumption for
             
         Returns:
-            float: The electricity consumption in kWh for the given year
+            float: Energy consumption in kWh
         """
         if not isinstance(scenario.vehicle, BETParameters):
             raise ValueError("Vehicle must be a BET for this strategy")
@@ -382,7 +408,7 @@ class DieselConsumptionStrategy(EnergyConsumptionStrategy):
         return adblue_consumption_l * adblue_price_per_l
 
 
-class MaintenanceStrategy(ABC):
+class MaintenanceStrategy(CostCalculationStrategy):
     """
     Abstract base class for maintenance cost calculation strategies.
     Different vehicle types can implement different calculation methods.
@@ -581,21 +607,21 @@ class DieselMaintenanceStrategy(DistanceBasedMaintenanceStrategy):
 
 class ResidualValueStrategy(ABC):
     """
-    Abstract base class for residual value calculation strategies.
-    Different vehicle types can implement different calculation methods.
+    Abstract base class defining the interface for residual value strategies.
+    All residual value strategies should inherit from this class.
     """
     
     @abstractmethod
     def calculate_residual_value(self, scenario: ScenarioInput, year: int) -> float:
         """
-        Calculate the residual value for a given year.
+        Calculate residual value for a specific year.
         
         Args:
             scenario: The scenario input
-            year: The year to calculate the residual value for
+            year: The year to calculate residual value for (0-based index)
             
         Returns:
-            float: The residual value for the given year in AUD
+            float: The calculated residual value for the given year
         """
         pass
     
@@ -604,10 +630,10 @@ class ResidualValueStrategy(ABC):
         Convert analysis year (0-based) to calendar year.
         
         Args:
-            year: The year of analysis (0-based)
+            year: Analysis year (0-based)
             
         Returns:
-            int: The corresponding calendar year
+            int: Calendar year
         """
         return BASE_CALENDAR_YEAR + year
 
@@ -1253,12 +1279,140 @@ class FuelBasedCarbonTaxStrategy(CarbonTaxStrategy):
         return carbon_tax
 
 
-# --- Factory Functions ---
+class StrategyFactory:
+    """
+    Factory for creating strategy instances with standardized naming.
+    
+    This factory manages the registration and retrieval of strategy classes,
+    providing a consistent interface for obtaining strategy instances.
+    """
+    
+    # Constants for default keys
+    DEFAULT_STRATEGY_KEY = ":"
+    
+    # Registry of strategies by domain and type
+    _strategies: Dict[str, Dict[str, Type[Any]]] = {}
+    
+    @classmethod
+    def register_strategy(cls, domain: str, vehicle_type: Optional[str], 
+                         implementation: Optional[str], strategy_class: Type[Any]) -> None:
+        """
+        Register a strategy class for a domain and type.
+        
+        Args:
+            domain: Strategy domain (e.g., 'energy', 'maintenance')
+            vehicle_type: Optional vehicle type ('battery_electric' or 'diesel')
+            implementation: Optional implementation approach (e.g., 'distance_based')
+            strategy_class: Strategy class to register
+        """
+        if domain not in cls._strategies:
+            cls._strategies[domain] = {}
+        
+        # Create a key for this strategy variant
+        variant_key = f"{vehicle_type or ''}:{implementation or ''}"
+        cls._strategies[domain][variant_key] = strategy_class
+    
+    @classmethod
+    def get_strategy(cls, domain: str, vehicle_type: Optional[str] = None,
+                    implementation: Optional[str] = None) -> Any:
+        """
+        Get a strategy instance for a domain and type.
+        
+        Args:
+            domain: Strategy domain (e.g., 'energy', 'maintenance')
+            vehicle_type: Optional vehicle type (battery_electric or diesel)
+            implementation: Optional implementation approach (e.g., 'distance_based')
+            
+        Returns:
+            Instance of the appropriate strategy
+            
+        Raises:
+            ValueError: If no suitable strategy is found
+        """
+        if domain not in cls._strategies:
+            raise ValueError(f"No strategies registered for domain '{domain}'")
+        
+        # Try to find a strategy using progressively less specific keys
+        # 1. Exact match with both vehicle_type and implementation
+        variant_key = f"{vehicle_type or ''}:{implementation or ''}"
+        if variant_key in cls._strategies[domain]:
+            return cls._strategies[domain][variant_key]()
+        
+        # 2. Match with just vehicle type
+        vehicle_variant = f"{vehicle_type or ''}:"
+        if vehicle_variant in cls._strategies[domain]:
+            return cls._strategies[domain][vehicle_variant]()
+        
+        # 3. Match with just implementation
+        impl_variant = f":{implementation or ''}"
+        if impl_variant in cls._strategies[domain]:
+            return cls._strategies[domain][impl_variant]()
+        
+        # 4. Default strategy (empty key)
+        if cls.DEFAULT_STRATEGY_KEY in cls._strategies[domain]:
+            return cls._strategies[domain][cls.DEFAULT_STRATEGY_KEY]()
+        
+        # If all else fails, raise an error
+        raise ValueError(
+            f"No suitable strategy found for domain '{domain}', "
+            f"vehicle type '{vehicle_type}', implementation '{implementation}'"
+        )
 
+
+def register_all_strategies():
+    """
+    Register all standard strategies with the factory.
+    
+    This function should be called once at module initialization to 
+    register all available strategies with the StrategyFactory.
+    """
+    # Use naming utility from terminology module
+    from tco_model.terminology import get_strategy_class_name
+    
+    # Energy consumption strategies
+    StrategyFactory.register_strategy("energy", "battery_electric", None, BETEnergyConsumptionStrategy)
+    StrategyFactory.register_strategy("energy", "diesel", None, DieselConsumptionStrategy)
+    
+    # Maintenance strategies
+    StrategyFactory.register_strategy("maintenance", "battery_electric", None, BETMaintenanceStrategy)
+    StrategyFactory.register_strategy("maintenance", "diesel", None, DieselMaintenanceStrategy)
+    
+    # Standard distance-based variants
+    StrategyFactory.register_strategy("maintenance", None, "distance_based", DistanceBasedMaintenanceStrategy)
+    
+    # Residual value strategies
+    StrategyFactory.register_strategy("residual_value", None, None, StandardResidualValueStrategy)
+    
+    # Financing strategies
+    StrategyFactory.register_strategy("financing", None, "loan", LoanFinancingStrategy)
+    StrategyFactory.register_strategy("financing", None, "cash", CashFinancingStrategy)
+    
+    # Infrastructure strategies
+    StrategyFactory.register_strategy("infrastructure", "battery_electric", None, BETInfrastructureStrategy)
+    StrategyFactory.register_strategy("infrastructure", "diesel", None, DieselInfrastructureStrategy)
+    
+    # Insurance strategies
+    StrategyFactory.register_strategy("insurance", None, None, ValueBasedInsuranceStrategy)
+    
+    # Registration strategies
+    StrategyFactory.register_strategy("registration", None, None, StandardRegistrationStrategy)
+    
+    # Carbon tax strategies
+    StrategyFactory.register_strategy("carbon_tax", None, None, FuelBasedCarbonTaxStrategy)
+    
+    # Battery replacement strategies
+    StrategyFactory.register_strategy(
+        "battery_replacement", 
+        "battery_electric", 
+        None, 
+        DegradationBasedBatteryReplacementStrategy
+    )
+
+
+# Update strategy getter functions to use the factory pattern
 def get_energy_consumption_strategy(vehicle_type: VehicleType) -> EnergyConsumptionStrategy:
     """
-    Factory function to get the appropriate energy consumption strategy
-    for a given vehicle type.
+    Get the appropriate energy consumption strategy based on vehicle type.
     
     Args:
         vehicle_type: The vehicle type
@@ -1266,18 +1420,12 @@ def get_energy_consumption_strategy(vehicle_type: VehicleType) -> EnergyConsumpt
     Returns:
         EnergyConsumptionStrategy: The appropriate strategy for the vehicle type
     """
-    strategies = {
-        VehicleType.BATTERY_ELECTRIC: BETPowerConsumptionStrategy(),
-        VehicleType.DIESEL: DieselConsumptionStrategy(),
-    }
-    
-    return strategies.get(vehicle_type, DieselConsumptionStrategy())
+    return StrategyFactory.get_strategy("energy", vehicle_type.value)
 
 
 def get_maintenance_strategy(vehicle_type: VehicleType) -> MaintenanceStrategy:
     """
-    Factory function to get the appropriate maintenance strategy
-    for a given vehicle type.
+    Get the appropriate maintenance strategy based on vehicle type.
     
     Args:
         vehicle_type: The vehicle type
@@ -1285,38 +1433,32 @@ def get_maintenance_strategy(vehicle_type: VehicleType) -> MaintenanceStrategy:
     Returns:
         MaintenanceStrategy: The appropriate strategy for the vehicle type
     """
-    strategies = {
-        VehicleType.BATTERY_ELECTRIC: BETMaintenanceStrategy(),
-        VehicleType.DIESEL: DieselMaintenanceStrategy(),
-    }
-    
-    return strategies.get(vehicle_type, DieselMaintenanceStrategy())
+    return StrategyFactory.get_strategy("maintenance", vehicle_type.value)
 
 
 def get_residual_value_strategy() -> ResidualValueStrategy:
     """
-    Factory function to get the residual value strategy.
+    Get the standard residual value strategy.
     
     Returns:
-        ResidualValueStrategy: The residual value strategy
+        ResidualValueStrategy: The appropriate strategy for residual value calculation
     """
-    return StandardResidualValueStrategy()
+    return StrategyFactory.get_strategy("residual_value")
 
 
 def get_battery_replacement_strategy() -> BatteryReplacementStrategy:
     """
-    Factory function to get the battery replacement strategy.
+    Get the battery replacement strategy.
     
     Returns:
-        BatteryReplacementStrategy: The battery replacement strategy
+        BatteryReplacementStrategy: The appropriate strategy for battery replacement
     """
-    return DegradationBasedBatteryReplacementStrategy()
+    return StrategyFactory.get_strategy("battery_replacement", "battery_electric")
 
 
 def get_infrastructure_strategy(vehicle_type: VehicleType) -> InfrastructureStrategy:
     """
-    Factory function to get the appropriate infrastructure strategy
-    for a given vehicle type.
+    Get the appropriate infrastructure strategy based on vehicle type.
     
     Args:
         vehicle_type: The vehicle type
@@ -1324,18 +1466,12 @@ def get_infrastructure_strategy(vehicle_type: VehicleType) -> InfrastructureStra
     Returns:
         InfrastructureStrategy: The appropriate strategy for the vehicle type
     """
-    strategies = {
-        VehicleType.BATTERY_ELECTRIC: BETInfrastructureStrategy(),
-        VehicleType.DIESEL: DieselInfrastructureStrategy(),
-    }
-    
-    return strategies.get(vehicle_type, DieselInfrastructureStrategy())
+    return StrategyFactory.get_strategy("infrastructure", vehicle_type.value)
 
 
 def get_financing_strategy(financing_method: FinancingMethod) -> FinancingStrategy:
     """
-    Factory function to get the appropriate financing strategy
-    for a given financing method.
+    Get the appropriate financing strategy based on method.
     
     Args:
         financing_method: The financing method
@@ -1343,39 +1479,39 @@ def get_financing_strategy(financing_method: FinancingMethod) -> FinancingStrate
     Returns:
         FinancingStrategy: The appropriate strategy for the financing method
     """
-    strategies = {
-        FinancingMethod.LOAN: LoanFinancingStrategy(),
-        FinancingMethod.CASH: CashFinancingStrategy(),
-    }
-    
-    return strategies.get(financing_method, LoanFinancingStrategy())
+    implementation = financing_method.value  # 'loan' or 'cash'
+    return StrategyFactory.get_strategy("financing", None, implementation)
 
 
 def get_insurance_strategy() -> InsuranceStrategy:
     """
-    Factory function to get the insurance strategy.
+    Get the standard insurance strategy.
     
     Returns:
-        InsuranceStrategy: The insurance strategy
+        InsuranceStrategy: The standard insurance strategy
     """
-    return ValueBasedInsuranceStrategy()
+    return StrategyFactory.get_strategy("insurance")
 
 
 def get_registration_strategy() -> RegistrationStrategy:
     """
-    Factory function to get the registration strategy.
+    Get the standard registration strategy.
     
     Returns:
-        RegistrationStrategy: The registration strategy
+        RegistrationStrategy: The standard registration strategy
     """
-    return StandardRegistrationStrategy()
+    return StrategyFactory.get_strategy("registration")
 
 
 def get_carbon_tax_strategy() -> CarbonTaxStrategy:
     """
-    Factory function to get the carbon tax strategy.
+    Get the standard carbon tax strategy.
     
     Returns:
-        CarbonTaxStrategy: The carbon tax strategy
+        CarbonTaxStrategy: The standard carbon tax strategy
     """
-    return FuelBasedCarbonTaxStrategy() 
+    return StrategyFactory.get_strategy("carbon_tax")
+
+
+# Initialize strategy registry
+register_all_strategies() 

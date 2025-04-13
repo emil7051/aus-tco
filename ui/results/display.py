@@ -101,8 +101,8 @@ def format_result_metrics(result: TCOOutput) -> Dict[str, str]:
     
     try:
         metrics = {
-            "Total TCO (NPV)": format_currency(result.npv_total),
-            "Cost per km": f"{format_currency(result.lcod_per_km)}/km",
+            "Total TCO (NPV)": format_currency(result.total_tco),
+            "Cost per km": f"{format_currency(result.lcod)}/km",
             "Analysis Period": f"{result.analysis_period_years} years",
             "Total Distance": f"{result.total_distance_km:,.0f} km",
         }

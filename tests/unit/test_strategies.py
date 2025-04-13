@@ -1,149 +1,86 @@
 """
-Unit tests for the strategy pattern implementations in the TCO Modeller.
+Unit tests for the strategy pattern implementation.
 
-These tests verify that different strategies for calculating costs
-(energy, maintenance, etc.) work correctly.
+These tests verify:
+1. Strategy factory registration and retrieval
+2. Strategy fallback mechanism
+3. Specific energy consumption strategies
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
 
-from tco_model.strategies import (
-    EnergyConsumptionStrategy,
-    BETPowerConsumptionStrategy,
-    DieselConsumptionStrategy,
-    MaintenanceStrategy,
-    BETMaintenanceStrategy,
-    DieselMaintenanceStrategy,
-    get_energy_consumption_strategy,
-    get_maintenance_strategy,
-)
 from tco_model.models import VehicleType
+from tco_model.strategies import (
+    StrategyFactory,
+    get_energy_consumption_strategy,
+)
 
 
-class TestStrategyFactory:
-    """Tests for strategy factory functions."""
-
-    def test_get_energy_consumption_strategy(self):
-        """Test that the correct energy consumption strategy is returned."""
-        # Test BET strategy
+class TestStrategyPattern:
+    """Tests for the standardized strategy pattern."""
+    
+    def test_strategy_factory_registration(self):
+        """Test that strategies can be registered and retrieved from the factory."""
+        # Create a test strategy class
+        class TestStrategy:
+            def calculate(self): 
+                return "test result"
+        
+        # Register the strategy
+        StrategyFactory.register_strategy(
+            "test_domain", "test_vehicle", "test_implementation", TestStrategy
+        )
+        
+        # Retrieve the strategy
+        strategy = StrategyFactory.get_strategy(
+            "test_domain", "test_vehicle", "test_implementation"
+        )
+        
+        # Verify it's the right type and works
+        assert isinstance(strategy, TestStrategy)
+        assert strategy.calculate() == "test result"
+    
+    def test_strategy_fallback(self):
+        """Test that the factory uses fallback strategies correctly."""
+        # Create test strategy classes
+        class DefaultStrategy:
+            def calculate(self): 
+                return "default"
+                
+        class VehicleSpecificStrategy:
+            def calculate(self): 
+                return "vehicle specific"
+        
+        # Register strategies
+        StrategyFactory.register_strategy(
+            "test_domain2", None, None, DefaultStrategy
+        )
+        StrategyFactory.register_strategy(
+            "test_domain2", "specific_vehicle", None, VehicleSpecificStrategy
+        )
+        
+        # Test fallback to default
+        default_strategy = StrategyFactory.get_strategy(
+            "test_domain2", "unknown_vehicle", "unknown_implementation"
+        )
+        assert default_strategy.calculate() == "default"
+        
+        # Test specific match
+        specific_strategy = StrategyFactory.get_strategy(
+            "test_domain2", "specific_vehicle", "unknown_implementation"
+        )
+        assert specific_strategy.calculate() == "vehicle specific"
+    
+    def test_energy_consumption_strategy(self):
+        """Test that energy consumption strategies are correctly renamed and work."""
+        # Get strategies for different vehicle types
         bet_strategy = get_energy_consumption_strategy(VehicleType.BATTERY_ELECTRIC)
-        assert isinstance(bet_strategy, BETPowerConsumptionStrategy)
-        
-        # Test diesel strategy
         diesel_strategy = get_energy_consumption_strategy(VehicleType.DIESEL)
-        assert isinstance(diesel_strategy, DieselConsumptionStrategy)
         
-        # Test fallback for unknown type (should default to diesel)
-        unknown_strategy = get_energy_consumption_strategy("unknown_type")
-        assert isinstance(unknown_strategy, DieselConsumptionStrategy)
-    
-    def test_get_maintenance_strategy(self):
-        """Test that the correct maintenance strategy is returned."""
-        # Test BET strategy
-        bet_strategy = get_maintenance_strategy(VehicleType.BATTERY_ELECTRIC)
-        assert isinstance(bet_strategy, BETMaintenanceStrategy)
+        # Verify they are of the correct type
+        assert bet_strategy.__class__.__name__ == "BETEnergyConsumptionStrategy"
+        assert diesel_strategy.__class__.__name__ == "DieselConsumptionStrategy"
         
-        # Test diesel strategy
-        diesel_strategy = get_maintenance_strategy(VehicleType.DIESEL)
-        assert isinstance(diesel_strategy, DieselMaintenanceStrategy)
-        
-        # Test fallback for unknown type (should default to diesel)
-        unknown_strategy = get_maintenance_strategy("unknown_type")
-        assert isinstance(unknown_strategy, DieselMaintenanceStrategy)
-
-
-class TestEnergyConsumptionStrategies:
-    """Tests for energy consumption strategies."""
-
-    def test_bet_consumption_calculation(self, bet_scenario):
-        """Test that BET consumption calculation returns a valid result."""
-        strategy = BETPowerConsumptionStrategy()
-        consumption = strategy.calculate_consumption(bet_scenario, 1)
-        # The placeholder implementation returns 0
-        assert isinstance(consumption, float)
-        
-        # Test that costs method calls consumption method
-        with patch.object(strategy, 'calculate_consumption', return_value=100.0) as mock_consumption:
-            costs = strategy.calculate_costs(bet_scenario, 1)
-            mock_consumption.assert_called_once_with(bet_scenario, 1)
-    
-    def test_diesel_consumption_calculation(self, diesel_scenario):
-        """Test that diesel consumption calculation returns a valid result."""
-        strategy = DieselConsumptionStrategy()
-        consumption = strategy.calculate_consumption(diesel_scenario, 1)
-        # The placeholder implementation returns 0
-        assert isinstance(consumption, float)
-        
-        # Test that costs method calls consumption method
-        with patch.object(strategy, 'calculate_consumption', return_value=100.0) as mock_consumption:
-            costs = strategy.calculate_costs(diesel_scenario, 1)
-            mock_consumption.assert_called_once_with(diesel_scenario, 1)
-
-
-class TestMaintenanceStrategies:
-    """Tests for maintenance strategies."""
-
-    def test_bet_maintenance_calculation(self, bet_scenario):
-        """Test that BET maintenance calculation returns a valid result."""
-        strategy = BETMaintenanceStrategy()
-        costs = strategy.calculate_costs(bet_scenario, 1)
-        # The placeholder implementation returns 0
-        assert isinstance(costs, float)
-    
-    def test_diesel_maintenance_calculation(self, diesel_scenario):
-        """Test that diesel maintenance calculation returns a valid result."""
-        strategy = DieselMaintenanceStrategy()
-        costs = strategy.calculate_costs(diesel_scenario, 1)
-        # The placeholder implementation returns 0
-        assert isinstance(costs, float)
-
-
-class TestStrategyImplementationDetails:
-    """Tests for specific implementation details of strategies."""
-    
-    def test_bet_consumption_with_mocked_values(self, bet_scenario):
-        """Test BET consumption with mocked values."""
-        strategy = BETPowerConsumptionStrategy()
-        
-        # Create a more realistic scenario with mocked calculation
-        with patch.object(strategy, 'calculate_consumption', return_value=1000.0):
-            # Mock electricity price
-            original_energy_prices = bet_scenario.economic.energy_prices
-            bet_scenario.economic.energy_prices = {
-                "electricity": {
-                    "price": 0.25,  # 25 cents per kWh
-                    "rate_type": "flat_rate",
-                    "annual_change": 0.02
-                }
-            }
-            
-            # When consumption is 1000 kWh and price is 0.25 per kWh, cost should be 250
-            # But our placeholder doesn't implement this logic yet
-            costs = strategy.calculate_costs(bet_scenario, 1)
-            
-            # Restore original values
-            bet_scenario.economic.energy_prices = original_energy_prices
-    
-    def test_diesel_consumption_with_mocked_values(self, diesel_scenario):
-        """Test diesel consumption with mocked values."""
-        strategy = DieselConsumptionStrategy()
-        
-        # Create a more realistic scenario with mocked calculation
-        with patch.object(strategy, 'calculate_consumption', return_value=1000.0):
-            # Mock diesel price
-            original_energy_prices = diesel_scenario.economic.energy_prices
-            diesel_scenario.economic.energy_prices = {
-                "diesel": {
-                    "price": 1.50,  # $1.50 per liter
-                    "scenario": "constant",
-                    "annual_change": 0.02
-                }
-            }
-            
-            # When consumption is 1000 L and price is $1.50 per L, cost should be 1500
-            # But our placeholder doesn't implement this logic yet
-            costs = strategy.calculate_costs(diesel_scenario, 1)
-            
-            # Restore original values
-            diesel_scenario.economic.energy_prices = original_energy_prices 
+        # Verify the strategies have the expected methods
+        assert hasattr(bet_strategy, 'calculate_consumption')
+        assert hasattr(diesel_strategy, 'calculate_consumption') 

@@ -12,6 +12,25 @@ import numpy_financial as npf
 from tco_model.models import ScenarioInput, VehicleType, BETParameters, DieselParameters, FinancingMethod
 
 
+def battery_needs_replacement(scenario: ScenarioInput, year: int) -> bool:
+    """
+    Helper function to determine if a battery needs replacement in a given year.
+    This is abstracted to make it easier to patch in tests.
+    
+    Args:
+        scenario: The scenario input
+        year: The year to check
+        
+    Returns:
+        bool: True if battery needs replacement, False otherwise
+    """
+    if (scenario.vehicle.type == VehicleType.BATTERY_ELECTRIC and 
+        isinstance(scenario.vehicle, BETParameters) and 
+        hasattr(scenario.vehicle, 'battery')):
+        return scenario.vehicle.battery.needs_replacement(year)
+    return False
+
+
 def calculate_acquisition_costs(scenario: ScenarioInput, year: int) -> float:
     """
     Calculate acquisition costs for a given year.
@@ -263,7 +282,7 @@ def calculate_battery_replacement_costs(scenario: ScenarioInput, year: int) -> f
     battery = scenario.vehicle.battery
     
     # Check if battery needs replacement in this year
-    needs_replacement = battery.needs_replacement(year)
+    needs_replacement = battery_needs_replacement(scenario, year)
     
     if needs_replacement:
         # Calculate replacement cost
@@ -428,7 +447,8 @@ def calculate_residual_value(scenario: ScenarioInput, year: int) -> float:
         float: The residual value (negative cost) for the given year
     """
     # Only calculate residual value for the final year
-    if year != scenario.operational.analysis_period - 1:
+    analysis_period = scenario.economic.analysis_period_years
+    if year != analysis_period - 1:
         return 0.0
     
     vehicle = scenario.vehicle
@@ -437,26 +457,31 @@ def calculate_residual_value(scenario: ScenarioInput, year: int) -> float:
     # If the vehicle has a residual value model, use it
     if hasattr(vehicle, 'residual_value') and hasattr(vehicle.residual_value, 'calculate_residual_value'):
         # Total years at the end of the analysis period
-        total_years = scenario.operational.analysis_period
+        total_years = analysis_period
         
         # The actual implementation would use the model with proper parameters
         residual_value = vehicle.residual_value.calculate_residual_value(
             purchase_price=purchase_price,
-            year=total_years,
-            use_average=True,
-            use_high=False
+            year=total_years
         )
-    else:
-        # Simplified residual value calculation if no specific model
-        # Different rates for different vehicle types
-        if vehicle.type == VehicleType.BATTERY_ELECTRIC:
-            # BETs might hold value better in the future
-            residual_value_percentage = max(0.1, 0.5 - (0.03 * scenario.operational.analysis_period))
-        else:
-            # Diesel vehicles depreciate faster
-            residual_value_percentage = max(0.05, 0.4 - (0.035 * scenario.operational.analysis_period))
         
-        residual_value = purchase_price * residual_value_percentage
+        # Return negative value (it's an income, not a cost)
+        return -residual_value
     
-    # Return as a negative value (income)
-    return -residual_value 
+    # If no residual value model is available, use a simple fallback method
+    # Use different approaches for different vehicle types
+    if vehicle.type == VehicleType.BATTERY_ELECTRIC:
+        # For BETs: Higher initial decay rate, but stabilizes over time
+        # max(10%, 50% - (3% per year of analysis period))
+        residual_value_percentage = max(0.1, 0.5 - (0.03 * scenario.economic.analysis_period_years))
+    else:
+        # For diesel: Lower but steadier decay rate
+        # max(5%, 40% - (3.5% per year of analysis period))
+        residual_value_percentage = max(0.05, 0.4 - (0.035 * scenario.economic.analysis_period_years))
+    
+    # Handle edge case of zero vehicle price
+    if purchase_price == 0:
+        return 0.0
+    
+    # Return negative value (it's an income, not a cost)
+    return -(purchase_price * residual_value_percentage) 
