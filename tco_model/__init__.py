@@ -5,4 +5,4 @@ This package contains the core calculation logic for the Australian Heavy Vehicl
 It includes data models, calculation strategies, and the main TCO calculation engine.
 """
 
-__version__ = "0.1.0" 
+__version__ = "1.0.0" 

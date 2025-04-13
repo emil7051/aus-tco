@@ -147,9 +147,9 @@ diesel_results = calculator.calculate(diesel_scenario)
 comparison = calculator.compare_results(bet_results, diesel_results)
 
 # Access the results
-print(f"BET Total TCO: ${bet_results.npv_total:,.2f}")
-print(f"Diesel Total TCO: ${diesel_results.npv_total:,.2f}")
-print(f"TCO difference: ${comparison.npv_difference:,.2f}")
-print(f"LCOD (BET): ${bet_results.lcod_per_km:.4f}/km")
-print(f"LCOD (Diesel): ${diesel_results.lcod_per_km:.4f}/km")
+print(f"BET Total TCO: ${bet_results.total_tco:,.2f}")
+print(f"Diesel Total TCO: ${diesel_results.total_tco:,.2f}")
+print(f"TCO difference: ${comparison.tco_difference:,.2f}")
+print(f"LCOD (BET): ${bet_results.lcod:.4f}/km")
+print(f"LCOD (Diesel): ${diesel_results.lcod:.4f}/km")
 ``` 

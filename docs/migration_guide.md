@@ -122,6 +122,6 @@ params = load_config_as_model("config/vehicle.yaml", BETParameters)
 
 ## Transition Timeline
 
-- **Phase 1 (Current)**: Backward compatibility mode - old field names still work but issue deprecation warnings
-- **Phase 2 (Next Release)**: Old field names will continue to work for backward compatibility
+- **Phase 1 (Completed)**: Backward compatibility mode - old field names worked but issued deprecation warnings
+- **Phase 2 (Current)**: The codebase now uses standardized field names consistently. Old field names continue to work for backward compatibility
 - **Phase 3 (Future Release)**: Old field names will be removed completely 

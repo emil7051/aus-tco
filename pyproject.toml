@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "aus-heavy-vehicle-tco"
-version = "0.1.0"
+name = "aus-tco"
+version = "1.0.0"
 description = "Australian Heavy Vehicle Total Cost of Ownership (TCO) Modeller"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
