@@ -295,7 +295,6 @@ def create_cumulative_tco_chart(result1: TCOOutput, result2: TCOOutput,
                         arrowwidth=2,
                         ax=50,
                         ay=-50,
-                        visible=settings["show_annotations"],
                     )
                     breakeven_found = True
                     break
@@ -313,7 +312,6 @@ def create_cumulative_tco_chart(result1: TCOOutput, result2: TCOOutput,
                 text="No break-even point found in analysis period",
                 showarrow=False,
                 font=dict(size=12, color="red"),
-                visible=settings["show_annotations"],
             )
     
     return fig

@@ -107,7 +107,7 @@ def _render_vehicle_selector(
         # Display a selectbox for available configurations
         with col2:
             selected_config = st.selectbox(
-                f"", 
+                "Select configuration", 
                 options=type_configs,
                 index=type_configs.index(default_config_name) if default_config_name in type_configs else 0,
                 key=f"config_select_{vehicle_number}",

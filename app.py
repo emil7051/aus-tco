@@ -173,56 +173,6 @@ def calculate_tco():
             st.write(traceback.format_exc())
 
 
-def handle_vehicle_switch(old_type: VehicleType, new_type: VehicleType, vehicle_number: int) -> None:
-    """
-    Handle switching vehicle type, loading appropriate default values.
-    
-    Args:
-        old_type: Previous vehicle type
-        new_type: New vehicle type
-        vehicle_number: Vehicle number (1 or 2)
-    """
-    if old_type == new_type:
-        return
-        
-    try:
-        # Load new default scenario based on vehicle type
-        if new_type == VehicleType.BATTERY_ELECTRIC:
-            default_name = "default_bet"
-        else:
-            default_name = "default_ice"
-            
-        # Load the new scenario
-        new_scenario = load_default_scenario(default_name)
-        
-        # Preserve some values from the old scenario
-        state_key = f"vehicle_{vehicle_number}_input"
-        old_scenario = st.session_state[state_key]
-        
-        # Update attributes that should be preserved (scenario name, operational parameters)
-        new_scenario.scenario_name = old_scenario.scenario_name
-        new_scenario.operational = old_scenario.operational
-        
-        # Store the new scenario
-        st.session_state[state_key] = new_scenario
-        
-        # Update nested state values
-        update_state_from_model(state_key, new_scenario)
-        
-        # Reset results when vehicle type changes
-        st.session_state[STATE_SHOW_RESULTS] = False
-        st.session_state[STATE_RESULTS] = None
-        st.session_state[STATE_COMPARISON] = None
-        
-    except Exception as e:
-        error_msg = f"Error switching vehicle type: {str(e)}"
-        st.session_state[STATE_ERROR] = error_msg
-        st.error(error_msg)
-        
-        if st.session_state.get(STATE_DEBUG_MODE, False):
-            st.exception(e)
-
-
 def main():
     """Main application entry point."""
     # Page configuration
@@ -260,6 +210,7 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
+            # Display correct vehicle type in the UI header - BET stands for Battery Electric Truck
             st.subheader("Vehicle 1 (BET)")
             render_vehicle_inputs(vehicle_number=1)
             render_operational_inputs(vehicle_number=1)
@@ -267,6 +218,7 @@ def main():
             render_financing_inputs(vehicle_number=1)
             
         with col2:
+            # Display correct vehicle type in the UI header - ICE stands for Internal Combustion Engine
             st.subheader("Vehicle 2 (ICE)")
             render_vehicle_inputs(vehicle_number=2)
             render_operational_inputs(vehicle_number=2)
@@ -283,6 +235,10 @@ def main():
     
     # Results Tab
     with tabs[1]:
+        # Initialize STATE_SHOW_RESULTS if not already present
+        if STATE_SHOW_RESULTS not in st.session_state:
+            st.session_state[STATE_SHOW_RESULTS] = False
+            
         if st.session_state[STATE_SHOW_RESULTS]:
             st.header("TCO Results")
             

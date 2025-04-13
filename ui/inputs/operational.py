@@ -130,7 +130,9 @@ def render_operational_inputs(vehicle_number: int) -> None:
                 st.metric("Charging Strategy", "Opportunity")
         
         # Additional operational statistics
-        if st.checkbox("Show Additional Statistics", value=False):
+        if st.checkbox("Show Additional Statistics", 
+                      value=False, 
+                      key=f"{state_prefix}_show_additional_stats"):
             col1, col2, col3 = st.columns(3)
             
             with col1:

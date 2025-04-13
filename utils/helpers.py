@@ -213,7 +213,7 @@ def load_economic_parameters(config_path: Optional[str] = None) -> EconomicParam
     Returns:
         EconomicParameters model with default values
     """
-    file_path = config_path or os.path.join(settings.defaults_config_path, "economic_parameters.yaml")
+    file_path = config_path or os.path.join(settings.config_path, "economic_parameters.yaml")
     data = load_yaml_file(file_path)
     
     # Extract relevant sections
@@ -245,7 +245,7 @@ def load_operational_parameters(config_path: Optional[str] = None) -> Operationa
     Returns:
         OperationalParameters model with default values
     """
-    file_path = config_path or os.path.join(settings.defaults_config_path, "operational_parameters.yaml")
+    file_path = config_path or os.path.join(settings.config_path, "operational_parameters.yaml")
     data = load_yaml_file(file_path)
     
     # Get values from the long_haul profile as defaults
@@ -273,7 +273,7 @@ def load_financing_parameters(config_path: Optional[str] = None) -> FinancingPar
     Returns:
         FinancingParameters model with default values
     """
-    file_path = config_path or os.path.join(settings.defaults_config_path, "economic_parameters.yaml")
+    file_path = config_path or os.path.join(settings.config_path, "economic_parameters.yaml")
     data = load_yaml_file(file_path)
     
     # Extract financing section
@@ -302,10 +302,12 @@ def load_vehicle_parameters(vehicle_type: VehicleType, config_path: Optional[str
         BETParameters or DieselParameters model with default values
     """
     if vehicle_type == VehicleType.BATTERY_ELECTRIC:
-        file_path = config_path or os.path.join(settings.vehicles_config_path, "default_bet.yaml")
+        # Use the provided path or default BET path
+        file_path = config_path or os.path.join(settings.vehicles_config_path, "bet", "default_bet.yaml")
         return load_bet_parameters(file_path)
     else:
-        file_path = config_path or os.path.join(settings.vehicles_config_path, "default_ice.yaml")
+        # Use the provided path or default diesel path
+        file_path = config_path or os.path.join(settings.vehicles_config_path, "diesel", "default_ice.yaml")
         return load_diesel_parameters(file_path)
 
 
@@ -334,7 +336,7 @@ def load_bet_parameters(config_path: str) -> BETParameters:
     
     # Load residual value data from operational parameters if not in vehicle config
     if not residual_data:
-        op_params_path = os.path.join(settings.defaults_config_path, "operational_parameters.yaml")
+        op_params_path = os.path.join(settings.config_path, "operational_parameters.yaml")
         op_data = load_yaml_file(op_params_path)
         
         if vehicle_info.get('category') == 'rigid':
@@ -405,7 +407,7 @@ def load_bet_parameters(config_path: str) -> BETParameters:
         )
     else:
         # Try to load from operational parameters
-        op_params_path = os.path.join(settings.defaults_config_path, "operational_parameters.yaml")
+        op_params_path = os.path.join(settings.config_path, "operational_parameters.yaml")
         op_data = load_yaml_file(op_params_path)
         infra_data = op_data.get('infrastructure', {})
         
@@ -458,7 +460,7 @@ def load_diesel_parameters(config_path: str) -> DieselParameters:
     
     # Load residual value data from operational parameters if not in vehicle config
     if not residual_data:
-        op_params_path = os.path.join(settings.defaults_config_path, "operational_parameters.yaml")
+        op_params_path = os.path.join(settings.config_path, "operational_parameters.yaml")
         op_data = load_yaml_file(op_params_path)
         
         if vehicle_info.get('category') == 'rigid':
@@ -533,11 +535,14 @@ def load_default_scenario(vehicle_config_name: str) -> ScenarioInput:
     # Determine vehicle type from config name
     if "bet" in vehicle_config_name.lower():
         vehicle_type = VehicleType.BATTERY_ELECTRIC
+        # Always use the bet subdirectory
+        vehicle_path = os.path.join(settings.vehicles_config_path, "bet", f"{vehicle_config_name}.yaml")
     else:
         vehicle_type = VehicleType.DIESEL
+        # Always use the diesel subdirectory
+        vehicle_path = os.path.join(settings.vehicles_config_path, "diesel", f"{vehicle_config_name}.yaml")
     
     # Load parameters
-    vehicle_path = os.path.join(settings.vehicles_config_path, f"{vehicle_config_name}.yaml")
     vehicle = load_vehicle_parameters(vehicle_type, vehicle_path)
     
     economic = load_economic_parameters()
@@ -568,29 +573,34 @@ def find_available_vehicle_configs() -> Dict[VehicleType, List[str]]:
     
     vehicles_dir = settings.vehicles_config_path
     
-    # Find all YAML files in the vehicles directory
-    for file_path in glob.glob(os.path.join(vehicles_dir, "*.yaml")):
-        try:
-            # Get just the filename without extension
-            filename = os.path.basename(file_path).replace(".yaml", "")
-            
-            # Load the file to determine vehicle type
-            data = load_yaml_file(file_path)
-            vehicle_info = data.get('vehicle_info', {})
-            
-            # Get vehicle type from the config file
-            vehicle_type_str = vehicle_info.get('type', '').lower()
-            
-            # Map to the appropriate VehicleType and add to result
-            if vehicle_type_str == 'battery_electric':
-                result[VehicleType.BATTERY_ELECTRIC].append(filename)
-            elif vehicle_type_str == 'diesel':
-                result[VehicleType.DIESEL].append(filename)
-            
-        except Exception as e:
-            # Skip files that can't be loaded properly
-            print(f"Error loading vehicle config {file_path}: {str(e)}")
-            continue
+    # Look only in subdirectories, not the main directory
+    for search_path in [
+        os.path.join(vehicles_dir, "bet", "*.yaml"),    # BET subdirectory
+        os.path.join(vehicles_dir, "diesel", "*.yaml")  # Diesel subdirectory
+    ]:
+        # Find all YAML files in the vehicles directory
+        for file_path in glob.glob(search_path):
+            try:
+                # Get just the filename without extension
+                filename = os.path.basename(file_path).replace(".yaml", "")
+                
+                # Load the file to determine vehicle type
+                data = load_yaml_file(file_path)
+                vehicle_info = data.get('vehicle_info', {})
+                
+                # Get vehicle type from the config file
+                vehicle_type_str = vehicle_info.get('type', '').lower()
+                
+                # Map to the appropriate VehicleType and add to result
+                if vehicle_type_str == 'battery_electric':
+                    result[VehicleType.BATTERY_ELECTRIC].append(filename)
+                elif vehicle_type_str == 'diesel':
+                    result[VehicleType.DIESEL].append(filename)
+                
+            except Exception as e:
+                # Skip files that can't be loaded properly
+                print(f"Error loading vehicle config {file_path}: {str(e)}")
+                continue
     
     # Sort the lists so they appear in a consistent order
     for vehicle_type in result:
@@ -795,6 +805,14 @@ def _extract_nested_state(prefix: str) -> Dict[str, Any]:
             # Extract the part after the prefix
             path = key[prefix_len:]
             
+            # Skip keys that aren't relevant for model creation
+            if not isinstance(st.session_state[key], (str, int, float, bool, list, dict)) and st.session_state[key] is not None:
+                continue
+                
+            # Remove "_input" suffix for field names coming from UI components
+            if path.endswith("_input"):
+                path = path[:-6]  # Remove "_input" suffix
+            
             # Navigate to the right place in the result dictionary
             current = result
             parts = path.split('.')
@@ -807,7 +825,183 @@ def _extract_nested_state(prefix: str) -> Dict[str, Any]:
             # Set the value at the leaf
             current[parts[-1]] = st.session_state[key]
     
+    # Ensure all required fields have values
+    _ensure_required_fields(result)
+    
     return result
+
+
+def _ensure_required_fields(data: Dict[str, Any]) -> None:
+    """
+    Ensure that all required fields have values in the model dictionary.
+    This fixes cases where form fields with "_input" suffix might not be
+    properly mapped to the model structure.
+    
+    Args:
+        data: Dictionary to check and fix
+    """
+    # Make sure vehicle has a name if it exists
+    if "vehicle" in data:
+        vehicle_data = data["vehicle"]
+        
+        # Default scenario name if missing
+        if "scenario_name" not in data:
+            data["scenario_name"] = "My Scenario"
+            
+        # Handle BET parameters
+        if "type" in vehicle_data and vehicle_data["type"] == "battery_electric":
+            # Ensure basic BET fields exist
+            _ensure_field(vehicle_data, "name", "Battery Electric Truck")
+            _ensure_field(vehicle_data, "category", "articulated")
+            _ensure_field(vehicle_data, "purchase_price", 400000.0)
+            _ensure_field(vehicle_data, "max_payload_tonnes", 26.0)
+            _ensure_field(vehicle_data, "range_km", 350.0)
+            
+            # Fix percentage fields
+            _fix_percentage_field(vehicle_data, "annual_price_decrease_real", 0.5)
+            
+            # Ensure battery fields exist
+            _ensure_nested_dict(vehicle_data, "battery")
+            _ensure_field(vehicle_data["battery"], "capacity_kwh", 400.0)
+            _ensure_field(vehicle_data["battery"], "usable_capacity_percentage", 0.9)
+            _fix_percentage_field(vehicle_data["battery"], "usable_capacity_percentage", 1.0)
+            _ensure_field(vehicle_data["battery"], "degradation_rate_annual", 0.02)
+            _fix_percentage_field(vehicle_data["battery"], "degradation_rate_annual", 0.2)
+            _ensure_field(vehicle_data["battery"], "replacement_threshold", 0.7)
+            _fix_percentage_field(vehicle_data["battery"], "replacement_threshold", 1.0)
+            _ensure_field(vehicle_data["battery"], "replacement_cost_factor", 0.8)
+            
+            # Ensure energy consumption fields exist
+            _ensure_nested_dict(vehicle_data, "energy_consumption")
+            _ensure_field(vehicle_data["energy_consumption"], "base_rate", 1.5)
+            _ensure_field(vehicle_data["energy_consumption"], "min_rate", 1.4)
+            _ensure_field(vehicle_data["energy_consumption"], "max_rate", 1.6)
+            
+            # Ensure charging fields exist
+            _ensure_nested_dict(vehicle_data, "charging")
+            _ensure_field(vehicle_data["charging"], "max_charging_power_kw", 350.0)
+            _ensure_field(vehicle_data["charging"], "charging_efficiency", 0.9)
+            
+            # Ensure maintenance fields exist
+            _ensure_nested_dict(vehicle_data, "maintenance")
+            _ensure_field(vehicle_data["maintenance"], "cost_per_km", 0.08)
+            _ensure_field(vehicle_data["maintenance"], "annual_fixed_min", 700)
+            _ensure_field(vehicle_data["maintenance"], "annual_fixed_max", 1500)
+            _ensure_field(vehicle_data["maintenance"], "annual_fixed_default", 1100)
+            _ensure_field(vehicle_data["maintenance"], "scheduled_maintenance_interval_km", 40000)
+            _ensure_field(vehicle_data["maintenance"], "major_service_interval_km", 120000)
+            
+            # Ensure residual value fields exist
+            _ensure_nested_dict(vehicle_data, "residual_value")
+            _ensure_field(vehicle_data["residual_value"], "year_5_range", [0.4, 0.5])
+            _ensure_field(vehicle_data["residual_value"], "year_10_range", [0.2, 0.3])
+            _ensure_field(vehicle_data["residual_value"], "year_15_range", [0.1, 0.15])
+            
+        # Handle Diesel parameters
+        elif "type" in vehicle_data and vehicle_data["type"] == "diesel":
+            # Ensure basic Diesel fields exist
+            _ensure_field(vehicle_data, "name", "Diesel Truck")
+            _ensure_field(vehicle_data, "category", "articulated")
+            _ensure_field(vehicle_data, "purchase_price", 200000.0)
+            _ensure_field(vehicle_data, "max_payload_tonnes", 28.0)
+            _ensure_field(vehicle_data, "range_km", 2200.0)
+            
+            # Fix percentage fields
+            _fix_percentage_field(vehicle_data, "annual_price_decrease_real", 0.5)
+            
+            # Ensure engine fields exist
+            _ensure_nested_dict(vehicle_data, "engine")
+            _ensure_field(vehicle_data["engine"], "power_kw", 400)
+            _ensure_field(vehicle_data["engine"], "displacement_litres", 13.0)
+            _ensure_field(vehicle_data["engine"], "euro_emission_standard", "Euro VI")
+            _ensure_field(vehicle_data["engine"], "adblue_required", True)
+            _ensure_field(vehicle_data["engine"], "adblue_consumption_percent_of_diesel", 0.05)
+            _fix_percentage_field(vehicle_data["engine"], "adblue_consumption_percent_of_diesel", 1.0)
+            
+            # Ensure fuel consumption fields exist
+            _ensure_nested_dict(vehicle_data, "fuel_consumption")
+            _ensure_field(vehicle_data["fuel_consumption"], "base_rate", 0.53)
+            _ensure_field(vehicle_data["fuel_consumption"], "min_rate", 0.45)
+            _ensure_field(vehicle_data["fuel_consumption"], "max_rate", 0.6)
+            
+            # Check and normalize fuel consumption values if they're unusually high
+            # (This handles cases where values might be in L/100km instead of L/km)
+            for rate_key in ["base_rate", "min_rate", "max_rate"]:
+                if rate_key in vehicle_data["fuel_consumption"] and vehicle_data["fuel_consumption"][rate_key] > 1.0:
+                    vehicle_data["fuel_consumption"][rate_key] = vehicle_data["fuel_consumption"][rate_key] / 100.0
+            
+            # Ensure maintenance fields exist
+            _ensure_nested_dict(vehicle_data, "maintenance")
+            _ensure_field(vehicle_data["maintenance"], "cost_per_km", 0.15)
+            _ensure_field(vehicle_data["maintenance"], "annual_fixed_min", 2500)
+            _ensure_field(vehicle_data["maintenance"], "annual_fixed_max", 5000)
+            _ensure_field(vehicle_data["maintenance"], "annual_fixed_default", 3750)
+            _ensure_field(vehicle_data["maintenance"], "scheduled_maintenance_interval_km", 25000)
+            _ensure_field(vehicle_data["maintenance"], "major_service_interval_km", 100000)
+            
+            # Ensure residual value fields exist
+            _ensure_nested_dict(vehicle_data, "residual_value")
+            _ensure_field(vehicle_data["residual_value"], "year_5_range", [0.45, 0.55])
+            _ensure_field(vehicle_data["residual_value"], "year_10_range", [0.25, 0.35])
+            _ensure_field(vehicle_data["residual_value"], "year_15_range", [0.10, 0.20])
+    
+    # Make sure operational parameters exist
+    if "operational" not in data:
+        data["operational"] = {}
+    _ensure_field(data["operational"], "annual_distance_km", 100000.0)
+    
+    # Fix percentage fields in operational parameters
+    if "operational" in data:
+        _fix_percentage_field(data["operational"], "average_load_factor", 1.0)
+    
+    # Fix percentage fields in economic parameters
+    if "economic" in data:
+        _fix_percentage_field(data["economic"], "discount_rate_real", 0.5)
+        _fix_percentage_field(data["economic"], "inflation_rate", 0.5)
+    
+    # Fix percentage fields in financing parameters
+    if "financing" in data:
+        _fix_percentage_field(data["financing"], "loan_interest_rate", 0.5)
+        _fix_percentage_field(data["financing"], "down_payment_percentage", 1.0)
+
+
+def _fix_percentage_field(data: Dict[str, Any], key: str, max_value: float) -> None:
+    """
+    Fix percentage fields that should be in decimal form (0-1 range).
+    If the value is greater than the max_value, divide by 100 to convert from percentage.
+    
+    Args:
+        data: Dictionary containing the field
+        key: Field name to fix
+        max_value: Maximum allowed value (typically 0.5 or 1.0)
+    """
+    if key in data and isinstance(data[key], (int, float)) and data[key] > max_value:
+        data[key] = data[key] / 100.0
+
+
+def _ensure_nested_dict(data: Dict[str, Any], key: str) -> None:
+    """
+    Ensure that a nested dictionary exists at the specified key.
+    
+    Args:
+        data: Parent dictionary
+        key: Key where the nested dictionary should exist
+    """
+    if key not in data or not isinstance(data[key], dict):
+        data[key] = {}
+
+
+def _ensure_field(data: Dict[str, Any], key: str, default_value: Any) -> None:
+    """
+    Ensure that a field exists in the dictionary with a default value if missing.
+    
+    Args:
+        data: Dictionary to check
+        key: Field key to ensure exists
+        default_value: Default value to use if the field is missing
+    """
+    if key not in data:
+        data[key] = default_value
 
 
 def debug_state(prefix: Optional[str] = None) -> Dict[str, Any]:
@@ -872,13 +1066,76 @@ def format_currency(value: float, decimals: int = 0) -> str:
 
 def format_percentage(value: float, decimals: int = 1) -> str:
     """
-    Format a decimal value as a percentage.
+    Format a value as a percentage string.
     
     Args:
-        value: Value to format (e.g., 0.07 for 7%)
-        decimals: Number of decimal places to show
+        value: The value to format (e.g., 0.15 for 15%)
+        decimals: Number of decimal places to display
         
     Returns:
-        Formatted percentage string
+        Formatted percentage string (e.g., "15.0%")
     """
     return f"{value * 100:.{decimals}f}%"
+
+
+def handle_vehicle_switch(old_type: str, new_type: str, vehicle_number: int) -> None:
+    """
+    Handle switching vehicle type, loading appropriate default values.
+    
+    Args:
+        old_type: Previous vehicle type string value
+        new_type: New vehicle type string value
+        vehicle_number: Vehicle number (1 or 2)
+    """
+    import streamlit as st
+    from tco_model.models import VehicleType
+    
+    # Convert string types to VehicleType enum if needed
+    if isinstance(old_type, str):
+        old_type = VehicleType(old_type)
+    if isinstance(new_type, str):
+        new_type = VehicleType(new_type)
+    
+    if old_type == new_type:
+        return
+        
+    try:
+        # Load new default scenario based on vehicle type
+        if new_type == VehicleType.BATTERY_ELECTRIC:
+            default_name = "default_bet"
+        else:
+            default_name = "default_ice"
+            
+        # Load the new scenario
+        new_scenario = load_default_scenario(default_name)
+        
+        # Preserve some values from the old scenario
+        state_key = f"vehicle_{vehicle_number}_input"
+        old_scenario = st.session_state[state_key]
+        
+        # Update attributes that should be preserved (scenario name, operational parameters)
+        new_scenario.scenario_name = old_scenario.scenario_name
+        new_scenario.operational = old_scenario.operational
+        
+        # Store the new scenario
+        st.session_state[state_key] = new_scenario
+        
+        # Update nested state values
+        update_state_from_model(state_key, new_scenario)
+        
+        # Reset results when vehicle type changes
+        if "show_results" in st.session_state:
+            st.session_state.show_results = False
+        if "results" in st.session_state:
+            st.session_state.results = None
+        if "comparison" in st.session_state:
+            st.session_state.comparison = None
+        
+    except Exception as e:
+        error_msg = f"Error switching vehicle type: {str(e)}"
+        if "error" in st.session_state:
+            st.session_state.error = error_msg
+        st.error(error_msg)
+        
+        if st.session_state.get("debug_mode", False):
+            st.exception(e)

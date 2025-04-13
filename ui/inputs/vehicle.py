@@ -14,10 +14,10 @@ from utils.helpers import (
     get_safe_state_value, 
     set_safe_state_value,
     initialize_nested_state,
-    format_currency
+    format_currency,
+    handle_vehicle_switch
 )
 from ui.guide import add_tooltips_to_ui
-
 
 # Constants for state keys
 STATE_TYPE = "type"
@@ -27,6 +27,24 @@ STATE_PURCHASE_PRICE = "purchase_price"
 STATE_ANNUAL_PRICE_DECREASE = "annual_price_decrease_real"
 STATE_MAX_PAYLOAD = "max_payload_tonnes"
 STATE_RANGE = "range_km"
+
+
+def on_vehicle_type_change(vehicle_number: int):
+    """
+    Handle vehicle type change by calling the handle_vehicle_switch function.
+    
+    Args:
+        vehicle_number: The vehicle number (1 or 2)
+    """
+    state_prefix = f"vehicle_{vehicle_number}_input"
+    new_type_str = st.session_state[f"{state_prefix}.vehicle.{STATE_TYPE}_input"]
+    
+    # Get the previous type
+    old_type_str = get_safe_state_value(f"{state_prefix}.vehicle.{STATE_TYPE}")
+    
+    # Only call if the type actually changed
+    if old_type_str != new_type_str:
+        handle_vehicle_switch(old_type_str, new_type_str, vehicle_number)
 
 
 def render_vehicle_inputs(vehicle_number: int) -> None:
@@ -65,9 +83,10 @@ def render_vehicle_inputs(vehicle_number: int) -> None:
             vehicle_type = st.selectbox(
                 "Vehicle Type",
                 options=[vt.value for vt in VehicleType],
-                index=0 if vehicle_number == 1 else 1,  # Default: BET for vehicle 1, DIESEL for vehicle 2
+                index=1 if vehicle_number == 1 else 0,  # DIESEL=0, BATTERY_ELECTRIC=1
                 key=f"{state_prefix}.vehicle.{STATE_TYPE}_input",
                 help="The powertrain type of the vehicle",
+                on_change=lambda: on_vehicle_type_change(vehicle_number)
             )
             set_safe_state_value(f"{state_prefix}.vehicle.{STATE_TYPE}", vehicle_type)
         
@@ -432,11 +451,16 @@ def render_diesel_parameters(vehicle_number: int, state_prefix: str, tooltips: D
     
     with st.expander("Fuel Consumption", expanded=False):
         # Fuel consumption parameters
+        base_rate = get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.base_rate", 0.53)
+        # Make sure value is in L/km (not L/100km)
+        if base_rate > 1.0:  # Unreasonably high for L/km, assume it's already in L/100km
+            base_rate = base_rate / 100.0
+            
         base_consumption = st.number_input(
             "Base Fuel Consumption (L/100km)",
             min_value=10.0,
             max_value=100.0,
-            value=float(get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.base_rate", 0.53)) * 100,
+            value=base_rate * 100,
             format="%.1f",
             key=f"{state_prefix}.vehicle.fuel_consumption.base_rate_input",
             help="Base fuel consumption per 100km under standard conditions",
@@ -447,11 +471,16 @@ def render_diesel_parameters(vehicle_number: int, state_prefix: str, tooltips: D
         col1, col2 = st.columns(2)
         
         with col1:
+            min_rate = get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.min_rate", 0.45)
+            # Make sure value is in L/km (not L/100km)
+            if min_rate > 1.0:  # Unreasonably high for L/km
+                min_rate = min_rate / 100.0
+                
             min_consumption = st.number_input(
                 "Minimum Consumption (L/100km)",
                 min_value=10.0,
                 max_value=base_consumption,
-                value=float(get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.min_rate", 0.45)) * 100,
+                value=min_rate * 100,
                 format="%.1f",
                 key=f"{state_prefix}.vehicle.fuel_consumption.min_rate_input",
                 help="Minimum fuel consumption under ideal conditions",
@@ -459,11 +488,16 @@ def render_diesel_parameters(vehicle_number: int, state_prefix: str, tooltips: D
             set_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.min_rate", min_consumption / 100.0)  # Convert to L/km
         
         with col2:
+            max_rate = get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.max_rate", 0.6)
+            # Make sure value is in L/km (not L/100km)
+            if max_rate > 1.0:  # Unreasonably high for L/km
+                max_rate = max_rate / 100.0
+                
             max_consumption = st.number_input(
                 "Maximum Consumption (L/100km)",
                 min_value=base_consumption,
                 max_value=100.0,
-                value=float(get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.max_rate", 0.6)) * 100,
+                value=max_rate * 100,
                 format="%.1f",
                 key=f"{state_prefix}.vehicle.fuel_consumption.max_rate_input",
                 help="Maximum fuel consumption under adverse conditions",

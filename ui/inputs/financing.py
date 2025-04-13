@@ -125,7 +125,9 @@ def render_financing_inputs(vehicle_number: int) -> None:
                         st.metric("Total Cost", format_currency(total_payments + purchase_price * down_payment/100))
                     
                     # Show loan amortization table
-                    if st.checkbox("Show Loan Amortization Schedule", False):
+                    if st.checkbox("Show Loan Amortization Schedule", 
+                                  False, 
+                                  key=f"{state_prefix}_show_amortization"):
                         st.subheader("Amortization Schedule")
                         
                         # Create a table with key loan amortization data

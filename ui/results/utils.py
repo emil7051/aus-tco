@@ -154,6 +154,9 @@ def get_chart_settings(default_settings: Optional[Dict[str, Any]] = None) -> Dic
     
     if "chart_settings" not in st.session_state:
         st.session_state.chart_settings = default_settings
+    elif "components_to_show" not in st.session_state.chart_settings:
+        # Ensure the components_to_show key exists
+        st.session_state.chart_settings["components_to_show"] = COMPONENT_KEYS.copy()
     
     return st.session_state.chart_settings
 
@@ -184,7 +187,6 @@ def apply_chart_theme(fig: Any, height: Optional[int] = None, title: Optional[st
     # Base styling
     fig.update_layout(
         height=height or settings["chart_height"],
-        grid=dict(visible=settings["show_grid"]),
         font=dict(family="Arial, sans-serif"),
         plot_bgcolor="white",
         margin=dict(l=50, r=50, t=50, b=50),
@@ -201,7 +203,7 @@ def apply_chart_theme(fig: Any, height: Optional[int] = None, title: Optional[st
     if title:
         fig.update_layout(title=title)
     
-    # Style axes
+    # Style axes - control grid visibility through axes properties instead
     fig.update_xaxes(showgrid=settings["show_grid"], zeroline=True, zerolinewidth=1, zerolinecolor="lightgray")
     fig.update_yaxes(showgrid=settings["show_grid"], zeroline=True, zerolinewidth=1, zerolinecolor="lightgray")
     
