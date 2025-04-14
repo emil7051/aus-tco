@@ -12,17 +12,39 @@ from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_valid
 from pydantic_settings import BaseSettings
 import numpy as np
 import warnings
+from dataclasses import dataclass
 
-# Remove this import to avoid circular imports
-# from tco_model.calculator import TCOCalculator
+# --- Emissions and Investment Analysis Data Models ---
 
+@dataclass
+class EmissionsData:
+    """Emissions data for a vehicle."""
+    annual_co2_tonnes: List[float]  # CO2 emissions per year
+    total_co2_tonnes: float  # Total lifetime CO2 emissions
+    energy_consumption_kwh: float  # Total energy consumption in kWh
+    energy_per_km: float  # Energy consumption per km
+    co2_per_km: float  # CO2 emissions per km
+    trees_equivalent: int  # Number of trees needed to offset emissions
+    homes_equivalent: float  # Equivalent to homes' annual energy use
+    cars_equivalent: float  # Equivalent to passenger vehicles for a year
+
+@dataclass
+class InvestmentAnalysis:
+    """Investment analysis between two vehicles."""
+    payback_years: Optional[float]  # Years to payback initial investment
+    roi: Optional[float]  # Return on investment percentage
+    npv_difference: float  # Net present value difference
+    irr: Optional[float]  # Internal rate of return
+    has_payback: bool  # Whether payback occurs within analysis period
 
 # --- Utility Types and Enums ---
 
 class VehicleType(str, Enum):
-    """Type of vehicle powertrain."""
-    DIESEL = "diesel"
-    BATTERY_ELECTRIC = "battery_electric"
+    """Vehicle types for TCO analysis."""
+    BET = "bet"
+    ICE = "ice"
+    FCEV = "fcev"
+    HEV = "hev"
 
 
 class VehicleCategory(str, Enum):
@@ -527,7 +549,7 @@ class VehicleBaseParameters(BaseModel):
 
 class BETParameters(VehicleBaseParameters):
     """Parameters specific to Battery Electric Trucks."""
-    type: Literal[VehicleType.BATTERY_ELECTRIC] = VehicleType.BATTERY_ELECTRIC
+    type: Literal[VehicleType.BET] = VehicleType.BET
     battery: BatteryParameters
     energy_consumption: BETConsumptionParameters
     charging: ChargingParameters
@@ -538,7 +560,7 @@ class BETParameters(VehicleBaseParameters):
 
 class DieselParameters(VehicleBaseParameters):
     """Parameters specific to Diesel Trucks."""
-    type: Literal[VehicleType.DIESEL] = VehicleType.DIESEL
+    type: Literal[VehicleType.ICE] = VehicleType.ICE
     engine: EngineParameters
     fuel_consumption: DieselConsumptionParameters
     maintenance: MaintenanceParameters
@@ -734,6 +756,26 @@ class TCOOutput(BaseModel):
     calculation_date: date = Field(default_factory=date.today, description="Date of calculation")
     _scenario: Optional[ScenarioInput] = PrivateAttr(default=None)
     
+    # New field for emissions data
+    emissions: Optional[EmissionsData] = None
+    
+    # Add property to get component costs as a dictionary 
+    @property
+    def cost_components(self) -> Dict[str, float]:
+        """Get cost components as a dictionary for easy access."""
+        return {
+            "acquisition": self.npv_costs.acquisition,
+            "energy": self.npv_costs.energy,
+            "maintenance": self.npv_costs.maintenance,
+            "infrastructure": self.npv_costs.infrastructure,
+            "battery_replacement": self.npv_costs.battery_replacement,
+            "insurance": self.npv_costs.insurance,
+            "registration": self.npv_costs.registration,
+            "carbon_tax": self.npv_costs.carbon_tax,
+            "other_taxes": self.npv_costs.other_taxes,
+            "residual_value": self.npv_costs.residual_value
+        }
+    
     @property
     def scenario(self) -> Optional[ScenarioInput]:
         """Return the original scenario for testing purposes."""
@@ -774,54 +816,50 @@ class ComparisonResult(BaseModel):
     lcod_difference_percentage: float = Field(..., description="Percentage difference in LCOD")
     payback_year: Optional[int] = Field(None, description="Year when the more expensive option breaks even")
     
+    # New field for investment analysis
+    investment_analysis: Optional[InvestmentAnalysis] = None
+    
     @property
     def component_differences(self) -> Dict[str, float]:
-        """Calculate differences between cost components."""
-        # Use consistent naming from terminology module
-        from tco_model.terminology import UI_COMPONENT_KEYS, get_component_value
+        """
+        Calculate differences in component costs between the two scenarios.
         
-        result = {}
-        # Loop through standardized component keys from terminology
-        for component in UI_COMPONENT_KEYS:
-            val1 = get_component_value(self.scenario_1.npv_costs, component)
-            val2 = get_component_value(self.scenario_2.npv_costs, component)
-            result[component] = val2 - val1
-        return result
+        Returns:
+            Dict mapping component names to difference values (scenario_2 - scenario_1)
+        """
+        differences = {}
+        
+        # Using the new cost_components property
+        components_1 = self.scenario_1.cost_components
+        components_2 = self.scenario_2.cost_components
+        
+        # Calculate differences for all components
+        for component in components_1.keys():
+            differences[component] = components_2.get(component, 0) - components_1.get(component, 0)
+        
+        # Add combined components
+        differences["insurance_registration"] = (
+            differences.get("insurance", 0) + differences.get("registration", 0)
+        )
+        differences["taxes_levies"] = (
+            differences.get("carbon_tax", 0) + differences.get("other_taxes", 0)
+        )
+        
+        return differences
     
     @property
     def cheaper_option(self) -> int:
-        """Return 1 if scenario_1 is cheaper, 2 if scenario_2 is cheaper."""
-        return 1 if self.tco_difference > 0 else 2
-    
-    @classmethod
-    def create(cls, scenario_1: TCOOutput, scenario_2: TCOOutput):
-        """Create a comparison between two TCO results."""
-        # Calculate differences using field names
-        tco_diff = scenario_2.total_tco - scenario_1.total_tco
+        """
+        Determine which scenario is cheaper (has lower TCO).
         
-        # Use helper function from terminology to calculate percentage difference
-        from tco_model.terminology import calculate_cost_difference
-        _, tco_diff_pct = calculate_cost_difference(scenario_1.total_tco, scenario_2.total_tco)
-            
-        lcod_diff = scenario_2.lcod - scenario_1.lcod
-        
-        # Use same helper function for consistency
-        _, lcod_diff_pct = calculate_cost_difference(scenario_1.lcod, scenario_2.lcod)
-        
-        # Calculate payback year
-        from tco_model.calculator import TCOCalculator
-        payback_calculator = TCOCalculator()
-        payback_year = payback_calculator._calculate_payback_year(scenario_1, scenario_2)
-        
-        return cls(
-            scenario_1=scenario_1,
-            scenario_2=scenario_2,
-            tco_difference=tco_diff,
-            tco_percentage=tco_diff_pct,
-            lcod_difference=lcod_diff,
-            lcod_difference_percentage=lcod_diff_pct,
-            payback_year=payback_year
-        )
+        Returns:
+            1 if scenario_1 is cheaper, 2 if scenario_2 is cheaper, 0 if equal
+        """
+        if self.tco_difference > 0:
+            return 1  # scenario_1 is cheaper
+        elif self.tco_difference < 0:
+            return 2  # scenario_2 is cheaper
+        return 0  # equal costs
 
 # --- App Settings and Configuration ---
 

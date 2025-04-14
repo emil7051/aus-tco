@@ -1,0 +1,101 @@
+/* ==========================================================================
+   Table Component Styles
+   ========================================================================== */
+
+/* Standard table */
+.styled-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+}
+
+.styled-table th,
+.styled-table td {
+  padding: var(--spacing-sm);
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.styled-table th {
+  background-color: var(--bg-secondary);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.styled-table tr:nth-child(even) {
+  background-color: var(--bg-secondary);
+}
+
+.styled-table tr:hover {
+  background-color: rgba(var(--info-color), 0.05);
+}
+
+/* Compact table */
+.compact-table th,
+.compact-table td {
+  padding: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+}
+
+/* Bordered table */
+.bordered-table th,
+.bordered-table td {
+  border: 1px solid var(--border-color);
+}
+
+/* Responsive table container */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Table with row highlights */
+.highlight-table .highlight-row {
+  background-color: rgba(var(--info-color), 0.1);
+}
+
+/* Data table */
+.data-table {
+  font-family: var(--font-monospace);
+  font-size: var(--font-size-xs);
+}
+
+.data-table th {
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Numeric columns */
+.numeric-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cell emphasis */
+.cell-emphasis {
+  font-weight: var(--font-weight-bold);
+}
+
+/* Row separator for section grouping */
+.row-separator td {
+  border-bottom: 2px solid var(--divider-color);
+}
+
+/* Table caption */
+.table-caption {
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Table footnotes */
+.table-footnotes {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+} 

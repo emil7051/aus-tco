@@ -1,0 +1,115 @@
+/* ==========================================================================
+   Dark Theme
+   ========================================================================== */
+
+:root {
+  /* Base theme colors */
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #3a3a3a;
+  --text-primary: #f1f1f1;
+  --text-secondary: #cccccc;
+  --border-color: #444444;
+  --divider-color: #444444;
+  
+  /* Dark theme specific RGB values for opacity usage */
+  --bet-primary-rgb: 38, 166, 154;
+  --diesel-primary-rgb: 251, 140, 0;
+  --error-color-rgb: 214, 39, 40;
+  --warning-color-rgb: 255, 127, 14;
+  --success-color-rgb: 44, 160, 44;
+  
+  /* Adjusted component colors for better visibility on dark backgrounds */
+  --acquisition-color: #3498db;
+  --energy-color: #ff9f43;
+  --maintenance-color: #2ecc71;
+  --infrastructure-color: #e74c3c;
+  --battery-color: #a569bd;
+  --insurance-color: #af7ac5;
+  --taxes-color: #f5b7ce;
+  --residual-color: #a4b0be;
+  
+  /* UI element colors */
+  --card-bg: #252525;
+  --card-border: #444444;
+  --card-shadow: rgba(0, 0, 0, 0.3);
+  --input-bg: #2d2d2d;
+  --input-border: #555555;
+  --input-focus-border: #26A69A;
+  --input-placeholder: #888888;
+  
+  /* Chart colors */
+  --chart-grid-color: rgba(255, 255, 255, 0.1);
+  --chart-axis-color: rgba(255, 255, 255, 0.5);
+  --chart-tooltip-bg: rgba(45, 45, 45, 0.95);
+}
+
+/* Dark theme specific adjustments */
+.stApp {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-testid="stSidebar"] {
+  background-color: var(--bg-primary);
+  border-right-color: var(--border-color);
+}
+
+.stTextInput input,
+.stNumberInput input,
+.stDateInput input {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--input-border);
+}
+
+.stTextInput input:focus,
+.stNumberInput input:focus,
+.stDateInput input:focus {
+  border-color: var(--input-focus-border);
+}
+
+.stSelectbox > div[data-baseweb="select"] > div {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--input-border);
+}
+
+.stTabs [data-baseweb="tab-list"] {
+  background-color: var(--bg-secondary);
+}
+
+.stTabs [data-baseweb="tab"] {
+  color: var(--text-primary);
+}
+
+/* Card styling for dark theme */
+.card {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+}
+
+/* Improve contrast for metric cards */
+.metric-card {
+  background-color: var(--bg-secondary);
+}
+
+.metric-insight {
+  background-color: var(--bg-primary);
+}
+
+/* Table adjustments */
+table th {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+table td {
+  border-color: var(--divider-color);
+}
+
+/* Chart preview */
+.chart-grid {
+  background-image: linear-gradient(var(--chart-grid-color) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--chart-grid-color) 1px, transparent 1px);
+} 

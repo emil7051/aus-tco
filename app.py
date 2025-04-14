@@ -12,12 +12,14 @@ import traceback
 
 # Import UI modules
 from ui.sidebar import render_sidebar
+from ui.progressive_disclosure import implement_progressive_disclosure
 from ui.inputs.vehicle import render_vehicle_inputs
 from ui.inputs.operational import render_operational_inputs
 from ui.inputs.economic import render_economic_inputs
 from ui.inputs.financing import render_financing_inputs
-from ui.results.summary import render_summary
-from ui.results.charts import render_charts
+from ui.inputs.parameter_comparisons_page import render_parameter_comparisons_page
+from ui.results.display import display_results, display_from_session_state
+from ui.layout import create_live_preview_layout
 from ui.guide import render_guide
 
 # Import TCO model and utilities
@@ -33,6 +35,14 @@ from utils.helpers import (
     initialize_nested_state,
 )
 
+# Import UI terminology and component utilities
+from utils.ui_terminology import get_formatted_label, get_component_color
+from utils.ui_components import UIComponentFactory
+from utils.css_loader import load_css, get_available_themes
+
+# Import navigation utilities
+from utils.navigation_state import initialize_navigation
+
 # Constants for session state keys
 STATE_INITIALIZED = "initialized"
 STATE_VEHICLE_1_INPUT = "vehicle_1_input"
@@ -42,6 +52,9 @@ STATE_COMPARISON = "comparison"
 STATE_SHOW_RESULTS = "show_results"
 STATE_ERROR = "error"
 STATE_DEBUG_MODE = "debug_mode"
+STATE_UI_THEME = "ui_theme"
+STATE_CURRENT_PAGE = "current_page"
+STATE_LAYOUT_MODE = "layout_mode"
 
 
 def initialize_session_state():
@@ -70,11 +83,20 @@ def initialize_session_state():
             st.session_state[STATE_SHOW_RESULTS] = False
             st.session_state[STATE_ERROR] = None
             st.session_state[STATE_DEBUG_MODE] = False
+            st.session_state[STATE_UI_THEME] = "light"
+            st.session_state[STATE_CURRENT_PAGE] = "inputs"
+            st.session_state[STATE_LAYOUT_MODE] = "tabbed"
             
             # Initialize nested state for UI components to reference
             # This makes individual fields accessible via dot notation
             update_state_from_model(STATE_VEHICLE_1_INPUT, bet_scenario)
             update_state_from_model(STATE_VEHICLE_2_INPUT, ice_scenario)
+            
+            # Enable live preview by default
+            st.session_state["enable_live_preview"] = True
+            
+            # Initialize navigation state
+            initialize_navigation()
             
         except Exception as e:
             st.session_state[STATE_ERROR] = str(e)
@@ -163,6 +185,11 @@ def calculate_tco():
         # Show results section
         st.session_state[STATE_SHOW_RESULTS] = True
         
+        # In live preview mode, stay on current page
+        # In tabbed mode, navigate to results
+        if st.session_state.get(STATE_LAYOUT_MODE) != "live_preview":
+            st.session_state[STATE_CURRENT_PAGE] = "results"
+        
     except Exception as e:
         error_msg = f"Error calculating TCO: {str(e)}"
         st.session_state[STATE_ERROR] = error_msg
@@ -171,6 +198,44 @@ def calculate_tco():
         if st.session_state.get(STATE_DEBUG_MODE, False):
             st.exception(e)
             st.write(traceback.format_exc())
+
+
+def load_app_styles():
+    """Load application styles with theme support"""
+    selected_theme = st.session_state.get(STATE_UI_THEME, "light")
+    load_css(selected_theme)
+
+
+def render_app_content():
+    """Render the appropriate content based on the current page and layout mode"""
+    current_page = st.session_state.get(STATE_CURRENT_PAGE, "inputs")
+    layout_mode = st.session_state.get(STATE_LAYOUT_MODE, "tabbed")
+    
+    # If in live preview mode, use side-by-side layout
+    if layout_mode == "live_preview":
+        create_live_preview_layout()
+        return
+    
+    # Otherwise use standard tabbed layout
+    if current_page == "inputs":
+        implement_progressive_disclosure()
+    elif current_page == "parameter_comparison":
+        render_parameter_comparisons_page()
+    elif current_page == "results":
+        if st.session_state.get(STATE_SHOW_RESULTS, False):
+            # Render results content
+            st.header("TCO Results & Comparison")
+            display_from_session_state()
+        else:
+            # If no results available, show calculate button
+            st.info("No results available yet. Configure vehicles and calculate TCO.")
+            if st.button("Calculate TCO Now", key="calc_tco_now"):
+                calculate_tco()
+    elif current_page == "guide":
+        render_guide()
+    else:
+        # Default to inputs if current page is invalid
+        implement_progressive_disclosure()
 
 
 def main():
@@ -185,11 +250,17 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Get selected theme from session state or default to light
+    selected_theme = st.session_state.get(STATE_UI_THEME, "light")
+    
+    # Load CSS with theme
+    load_css(selected_theme)
+    
     # Render the application title
     st.title("Australian Heavy Vehicle TCO Modeller")
     st.markdown("Compare the Total Cost of Ownership for different heavy vehicle types.")
     
-    # Render sidebar
+    # Render sidebar with navigation
     render_sidebar()
     
     # Display debug information if enabled
@@ -199,68 +270,8 @@ def main():
             st.write("Vehicle 1 State:", debug_state(STATE_VEHICLE_1_INPUT))
             st.write("Vehicle 2 State:", debug_state(STATE_VEHICLE_2_INPUT))
     
-    # Create tabs for inputs, results, and guide
-    tabs = st.tabs(["Vehicle Configuration", "Results", "User Guide"])
-    
-    # Vehicle Configuration Tab
-    with tabs[0]:
-        st.header("Vehicle Configuration")
-        
-        # Create columns for side-by-side vehicle inputs
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Display correct vehicle type in the UI header - BET stands for Battery Electric Truck
-            st.subheader("Vehicle 1 (BET)")
-            render_vehicle_inputs(vehicle_number=1)
-            render_operational_inputs(vehicle_number=1)
-            render_economic_inputs(vehicle_number=1)
-            render_financing_inputs(vehicle_number=1)
-            
-        with col2:
-            # Display correct vehicle type in the UI header - ICE stands for Internal Combustion Engine
-            st.subheader("Vehicle 2 (ICE)")
-            render_vehicle_inputs(vehicle_number=2)
-            render_operational_inputs(vehicle_number=2)
-            render_economic_inputs(vehicle_number=2)
-            render_financing_inputs(vehicle_number=2)
-        
-        # Calculate button in a centered container
-        _, center_col, _ = st.columns([1, 2, 1])
-        with center_col:
-            st.button("Calculate TCO", 
-                     on_click=calculate_tco, 
-                     key="calculate_button",
-                     use_container_width=True)
-    
-    # Results Tab
-    with tabs[1]:
-        # Initialize STATE_SHOW_RESULTS if not already present
-        if STATE_SHOW_RESULTS not in st.session_state:
-            st.session_state[STATE_SHOW_RESULTS] = False
-            
-        if st.session_state[STATE_SHOW_RESULTS]:
-            st.header("TCO Results")
-            
-            # Display any calculation errors
-            if st.session_state.get(STATE_ERROR):
-                st.error(st.session_state[STATE_ERROR])
-            
-            results = st.session_state[STATE_RESULTS]
-            comparison = st.session_state[STATE_COMPARISON]
-            
-            if results and comparison:
-                # Render summary tables
-                render_summary(results, comparison)
-                
-                # Render visualizations
-                render_charts(results, comparison)
-        else:
-            st.info("Configure vehicle parameters and click 'Calculate TCO' to see results.")
-    
-    # User Guide Tab
-    with tabs[2]:
-        render_guide()
+    # Render the main content based on current page
+    render_app_content()
 
 
 if __name__ == "__main__":

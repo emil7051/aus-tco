@@ -64,6 +64,10 @@ class TestTCOCalculator:
             result.npv_costs.residual_value
         )
         assert abs(result.total_tco - component_sum) < 0.01  # Allow for small rounding errors
+        
+        # Verify emissions data is calculated
+        assert result.emissions is not None
+        assert result.emissions.total_co2_tonnes > 0
 
     def test_calculate_diesel_scenario(self, diesel_scenario):
         """Test that the calculator produces valid results for a diesel scenario."""
@@ -84,6 +88,10 @@ class TestTCOCalculator:
         # Verify consistency of data types
         assert isinstance(result.total_tco, float)
         assert isinstance(result.lcod, float)
+        
+        # Verify emissions data is calculated
+        assert result.emissions is not None
+        assert result.emissions.total_co2_tonnes > 0
 
     def test_compare_results(self, bet_scenario, diesel_scenario):
         """Test that the calculator correctly compares two TCO results."""
@@ -94,8 +102,8 @@ class TestTCOCalculator:
         bet_result = calculator.calculate(bet_scenario)
         diesel_result = calculator.calculate(diesel_scenario)
         
-        # Compare results
-        comparison = calculator.compare_results(bet_result, diesel_result)
+        # Compare results using the new compare method
+        comparison = calculator.compare(bet_result, diesel_result)
         
         # Verify comparison structure and properties
         assert hasattr(comparison, 'tco_difference')  # Renamed from npv_difference
@@ -130,6 +138,13 @@ class TestTCOCalculator:
             assert comparison.cheaper_option == 1  # BET is cheaper
         else:
             assert comparison.cheaper_option == 2  # Diesel is cheaper
+            
+        # Verify investment analysis is calculated
+        assert comparison.investment_analysis is not None
+        assert hasattr(comparison.investment_analysis, 'npv_difference')
+        assert hasattr(comparison.investment_analysis, 'payback_years')
+        assert hasattr(comparison.investment_analysis, 'roi')
+        assert hasattr(comparison.investment_analysis, 'has_payback')
 
 
 class TestTCOCalculatorEdgeCases:

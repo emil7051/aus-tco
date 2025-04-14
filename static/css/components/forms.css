@@ -1,0 +1,299 @@
+/* ==========================================================================
+   Form Component Styles
+   ========================================================================== */
+
+/* Form containers */
+.form-container {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-section {
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+/* Form groups */
+.input-group {
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+}
+
+.input-container {
+  margin-bottom: var(--spacing-sm);
+  position: relative;
+}
+
+.input-container:last-child {
+  margin-bottom: 0;
+}
+
+/* Input field styling */
+.stTextInput input,
+.stNumberInput input,
+.stSelectbox select {
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  width: 100%;
+  font-size: var(--font-size-base);
+  transition: border-color var(--transition-fast);
+  background-color: var(--input-bg);
+}
+
+.stTextInput input:focus,
+.stNumberInput input:focus,
+.stSelectbox select:focus {
+  border-color: var(--input-focus-border);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--input-focus-border);
+}
+
+/* Checkbox styling */
+.stCheckbox label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Radio button styling */
+.stRadio label {
+  cursor: pointer;
+}
+
+/* Field validation styling */
+.invalid-input input,
+.invalid-input select {
+  border-color: var(--error-color);
+  background-color: rgba(var(--error-color), 0.05);
+}
+
+.validation-message {
+  color: var(--error-color);
+  font-size: var(--font-size-xs);
+  margin-top: var(--spacing-xs);
+}
+
+/* Parameter impact indicator */
+.impact-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin-left: auto;
+  cursor: help;
+  font-size: 16px;
+}
+
+.impact-indicator.high {
+  color: #D32F2F;
+  background-color: rgba(211, 47, 47, 0.1);
+}
+
+.impact-indicator.medium {
+  color: #F57C00;
+  background-color: rgba(245, 124, 0, 0.1);
+}
+
+.impact-indicator.low {
+  color: #388E3C;
+  background-color: rgba(56, 142, 60, 0.1);
+}
+
+/* Form buttons */
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+/* Slider styling adjustments */
+.stSlider {
+  padding-top: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+}
+
+/* Date input styling */
+.stDateInput input {
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+/* Parameter comparison styles */
+.parameter-comparison {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  background-color: var(--bg-secondary);
+}
+
+.param-label {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-base);
+}
+
+.param-vehicle {
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.param-value {
+  font-family: var(--font-mono);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  display: inline-block;
+  margin-top: var(--spacing-xs);
+}
+
+.param-value.v1 {
+  background-color: rgba(38, 166, 154, 0.1);
+  border-left: 3px solid #26A69A;
+}
+
+.param-value.v2 {
+  background-color: rgba(251, 140, 0, 0.1);
+  border-left: 3px solid #FB8C00;
+}
+
+.param-diff {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  display: inline-block;
+}
+
+.param-diff.positive {
+  color: #2E7D32;
+  background-color: rgba(46, 125, 50, 0.1);
+}
+
+.param-diff.negative {
+  color: #D32F2F;
+  background-color: rgba(211, 47, 47, 0.1);
+}
+
+.param-diff.neutral {
+  color: #455A64;
+  background-color: rgba(69, 90, 100, 0.1);
+}
+
+.param-diff.different {
+  color: #7B1FA2;
+  background-color: rgba(123, 31, 162, 0.1);
+}
+
+.param-divider {
+  border: none;
+  border-top: 1px dashed var(--divider-color);
+  margin: var(--spacing-sm) 0;
+}
+
+/* Section divider */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--divider-color);
+  margin: var(--spacing-md) 0;
+}
+
+/* Vehicle header */
+.vehicle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.vehicle-header.bet {
+  background-color: rgba(38, 166, 154, 0.1);
+  border-left: 4px solid #26A69A;
+}
+
+.vehicle-header.diesel {
+  background-color: rgba(251, 140, 0, 0.1);
+  border-left: 4px solid #FB8C00;
+}
+
+.vehicle-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.vehicle-type-badge {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  text-transform: uppercase;
+}
+
+.vehicle-header.bet .vehicle-type-badge {
+  background-color: #26A69A;
+  color: white;
+}
+
+.vehicle-header.diesel .vehicle-type-badge {
+  background-color: #FB8C00;
+  color: white;
+}
+
+/* Tab content styling */
+.stTabs [data-baseweb="tab-panel"] {
+  padding: var(--spacing-md);
+}
+
+/* Diff indicators for parameter comparison */
+.diff-indicator {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  display: inline-block;
+}
+
+.diff-indicator.positive {
+  color: #2E7D32;
+  background-color: rgba(46, 125, 50, 0.1);
+}
+
+.diff-indicator.negative {
+  color: #D32F2F;
+  background-color: rgba(211, 47, 47, 0.1);
+}
+
+.diff-indicator.neutral, .diff-indicator.same {
+  color: #455A64;
+  background-color: rgba(69, 90, 100, 0.1);
+}
+
+.diff-indicator.different {
+  color: #7B1FA2;
+  background-color: rgba(123, 31, 162, 0.1);
+}
+
+.diff-indicator.significant {
+  font-weight: 600;
+}
+
+.diff-indicator.minimal {
+  opacity: 0.8;
+} 

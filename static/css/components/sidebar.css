@@ -1,0 +1,151 @@
+/* ==========================================================================
+   Sidebar Component Styles
+   ========================================================================== */
+
+/* Sidebar header */
+.sidebar .sidebar-header {
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.sidebar .sidebar-header h1 {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Sidebar sections */
+.sidebar-section {
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.sidebar-section-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Sidebar items */
+.sidebar-item {
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+/* Vehicle selector */
+.vehicle-selector {
+  margin-bottom: var(--spacing-md);
+}
+
+.vehicle-option {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.vehicle-option:hover {
+  background-color: var(--bg-secondary);
+}
+
+.vehicle-option.selected {
+  border-color: var(--input-focus-border);
+  background-color: rgba(var(--input-focus-border), 0.05);
+}
+
+.vehicle-option.bet {
+  border-left: 3px solid var(--bet-primary);
+}
+
+.vehicle-option.diesel {
+  border-left: 3px solid var(--diesel-primary);
+}
+
+/* Quick summary card in sidebar */
+.quick-summary-card {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.quick-summary-card .card-header {
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.vehicle-comparison {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.vehicle-item {
+  text-align: center;
+  padding: var(--spacing-xs);
+}
+
+.vehicle-name {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.vehicle-tco {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.vehicle-lcod {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.key-insight {
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs);
+  background-color: var(--bg-tertiary);
+  border-radius: var(--border-radius-sm);
+  margin-top: var(--spacing-xs);
+}
+
+/* Theme selector in sidebar */
+.theme-selector {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.theme-option {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.theme-option.selected {
+  border-color: var(--input-focus-border);
+}
+
+.theme-option.light {
+  background-color: #ffffff;
+  border: 1px solid #dddddd;
+}
+
+.theme-option.dark {
+  background-color: #1f1f1f;
+}
+
+.theme-option.high-contrast {
+  background: linear-gradient(135deg, #ffffff 50%, #000000 50%);
+} 

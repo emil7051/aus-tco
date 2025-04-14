@@ -1,0 +1,63 @@
+/* ==========================================================================
+   Australian Heavy Vehicle TCO Modeller - Main CSS File
+   ========================================================================== */
+
+/* Base styles */
+@import url('./base/reset.css');
+@import url('./base/variables.css');
+@import url('./base/typography.css');
+@import url('./base/layout.css');
+
+/* Component styles */
+@import url('./components/cards.css');
+@import url('./components/forms.css');
+@import url('./components/navigation.css');
+@import url('./components/metrics.css');
+@import url('./components/sidebar.css');
+@import url('./components/tables.css');
+
+/* 
+Theme is imported dynamically based on user selection.
+The appropriate theme file is included via the load_css function.
+*/
+
+/* Global utility classes */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+.font-bold { font-weight: var(--font-weight-bold); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-normal { font-weight: var(--font-weight-normal); }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.rounded { border-radius: var(--border-radius-sm); }
+.rounded-md { border-radius: var(--border-radius-md); }
+.rounded-lg { border-radius: var(--border-radius-lg); }
+.rounded-full { border-radius: var(--border-radius-full); }
+
+.shadow { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+
+/* Australian-specific branding elements */
+.aus-branding {
+  border-left: 4px solid var(--aus-green);
+  border-right: 4px solid var(--aus-gold);
+}
+
+.aus-accent-top {
+  position: relative;
+}
+
+.aus-accent-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(to right, var(--aus-green) 0%, var(--aus-gold) 100%);
+} 

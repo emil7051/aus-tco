@@ -1,0 +1,153 @@
+/* ==========================================================================
+   High Contrast Theme for Accessibility
+   ========================================================================== */
+
+:root {
+  /* Base theme colors - high contrast for accessibility */
+  --bg-primary: #000000;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #2a2a2a;
+  --text-primary: #ffffff;
+  --text-secondary: #eeeeee;
+  --border-color: #ffffff;
+  --divider-color: #555555;
+  
+  /* High contrast specific RGB values for opacity usage */
+  --bet-primary-rgb: 0, 230, 200;
+  --diesel-primary-rgb: 255, 170, 0;
+  --error-color-rgb: 255, 80, 80;
+  --warning-color-rgb: 255, 190, 0;
+  --success-color-rgb: 50, 220, 50;
+  
+  /* Adjusted component colors for better contrast */
+  --acquisition-color: #0099ff;
+  --energy-color: #ffaa00;
+  --maintenance-color: #00cc00;
+  --infrastructure-color: #ff5050;
+  --battery-color: #cc66ff;
+  --insurance-color: #ff66cc;
+  --taxes-color: #ff99cc;
+  --residual-color: #bbbbbb;
+  
+  /* Vehicle type colors with higher contrast */
+  --bet-primary: #00E6C8;
+  --diesel-primary: #FFAA00;
+  
+  /* Australian-themed accents with higher contrast */
+  --aus-green: #00FF77;
+  --aus-gold: #FFD700;
+  
+  /* Status colors with higher contrast */
+  --success-color: #32DC32;
+  --warning-color: #FFBE00;
+  --error-color: #FF5050;
+  --info-color: #0099FF;
+  
+  /* UI element colors */
+  --card-bg: #1a1a1a;
+  --card-border: #ffffff;
+  --card-shadow: rgba(255, 255, 255, 0.2);
+  --input-bg: #1a1a1a;
+  --input-border: #ffffff;
+  --input-focus-border: #00E6C8;
+  --input-placeholder: #bbbbbb;
+  
+  /* Chart colors */
+  --chart-grid-color: rgba(255, 255, 255, 0.3);
+  --chart-axis-color: rgba(255, 255, 255, 0.8);
+  --chart-tooltip-bg: rgba(0, 0, 0, 0.9);
+}
+
+/* High contrast theme specific adjustments */
+body, .stApp {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Thicker borders for better visibility */
+.card, 
+[data-testid="stExpander"], 
+.stTextInput input,
+.stNumberInput input,
+.stDateInput input,
+.stSelectbox > div[data-baseweb="select"] > div {
+  border-width: 2px;
+}
+
+/* Higher contrast focus states */
+.stTextInput input:focus,
+.stNumberInput input:focus,
+.stDateInput input:focus,
+.stSelectbox > div[data-baseweb="select"] > div:focus,
+.stButton > button:focus {
+  outline: 2px solid var(--bet-primary);
+  box-shadow: 0 0 0 4px rgba(var(--bet-primary-rgb), 0.4);
+}
+
+/* Buttons with higher contrast */
+.stButton > button {
+  background-color: var(--bet-primary);
+  color: var(--bg-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.stButton > button:hover {
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+/* Form elements */
+.stCheckbox label span[role="checkbox"],
+.stRadio label span[role="radio"] {
+  border-color: var(--text-primary);
+  border-width: 2px;
+}
+
+.stCheckbox label span[role="checkbox"][data-checked="true"],
+.stRadio label span[role="radio"][data-checked="true"] {
+  background-color: var(--bet-primary);
+  border-color: var(--bet-primary);
+}
+
+/* Improved contrast for tabs */
+.stTabs [data-baseweb="tab-list"] {
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+}
+
+.stTabs [data-baseweb="tab"] {
+  color: var(--text-primary);
+}
+
+.stTabs [aria-selected="true"] {
+  background-color: var(--bet-primary);
+  color: var(--bg-primary) !important;
+  font-weight: var(--font-weight-bold);
+}
+
+/* Tables with better contrast */
+table th {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+}
+
+table td {
+  border: 1px solid var(--divider-color);
+}
+
+/* More pronounced impact indicators */
+.impact-indicator.high {
+  background-color: var(--error-color);
+  color: var(--bg-primary);
+}
+
+.impact-indicator.medium {
+  background-color: var(--warning-color);
+  color: var(--bg-primary);
+}
+
+.impact-indicator.low {
+  background-color: var(--success-color);
+  color: var(--bg-primary);
+} 

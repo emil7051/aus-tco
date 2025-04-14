@@ -1,0 +1,176 @@
+/* ==========================================================================
+   Card Component Styles
+   ========================================================================== */
+
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left: 4px solid var(--card-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-normal);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+}
+
+.card-title::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background-color: var(--card-border);
+}
+
+/* Cards with vehicle-specific styling */
+.card.vehicle-bet {
+  border-left-color: #26A69A;
+}
+
+.card.vehicle-bet .card-title::before {
+  background-color: #26A69A;
+}
+
+.card.vehicle-diesel {
+  border-left-color: #FB8C00;
+}
+
+.card.vehicle-diesel .card-title::before {
+  background-color: #FB8C00;
+}
+
+/* Card content sections */
+.card-section {
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.card-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Small cards for summary metrics */
+.metric-card {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.metric-card .metric-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  margin: var(--spacing-xs) 0;
+}
+
+.metric-card .metric-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* Special card types */
+.info-card {
+  background-color: rgba(33, 150, 243, 0.05);
+  border-left-color: #2196F3;
+}
+
+.info-card .card-title::before {
+  background-color: #2196F3;
+}
+
+.warning-card {
+  background-color: rgba(255, 152, 0, 0.05);
+  border-left-color: #FF9800;
+}
+
+.warning-card .card-title::before {
+  background-color: #FF9800;
+}
+
+.error-card {
+  background-color: rgba(244, 67, 54, 0.05);
+  border-left-color: #F44336;
+}
+
+.error-card .card-title::before {
+  background-color: #F44336;
+}
+
+.success-card {
+  background-color: rgba(76, 175, 80, 0.05);
+  border-left-color: #4CAF50;
+}
+
+.success-card .card-title::before {
+  background-color: #4CAF50;
+}
+
+/* Parameter cards - enhanced styling */
+.card h3 {
+  font-size: var(--font-size-md);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Tabbed card layout */
+.stTabs {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.stTabs [data-baseweb="tab-list"] {
+  background-color: var(--card-bg);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.stTabs [data-baseweb="tab"] {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Card grid layout */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Compact cards for dense layouts */
+.card.compact {
+  padding: var(--spacing-sm);
+}
+
+.card.compact .card-title {
+  font-size: var(--font-size-md);
+  margin-bottom: var(--spacing-xs);
+} 

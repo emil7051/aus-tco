@@ -1,0 +1,114 @@
+/* ==========================================================================
+   Metrics Component Styles
+   ========================================================================== */
+
+.metric-container {
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--bg-primary);
+}
+
+/* Override Streamlit's metric styling */
+[data-testid="stMetric"] {
+  background-color: transparent;
+  padding: 0;
+}
+
+[data-testid="stMetricLabel"] {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+[data-testid="stMetricValue"] {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+[data-testid="stMetricDelta"] {
+  font-size: var(--font-size-sm);
+}
+
+/* Metrics panel */
+.metrics-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.metric-card {
+  flex: 1;
+  min-width: 200px;
+  background-color: var(--bg-primary);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.metric-card.comparison {
+  border-top: 3px solid var(--info-color);
+}
+
+.metric-card.lcod {
+  border-top: 3px solid var(--energy-color);
+}
+
+.metric-card.payback {
+  border-top: 3px solid var(--success-color);
+}
+
+.metric-insight {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
+}
+
+.metric-insight .highlight {
+  font-weight: var(--font-weight-bold);
+}
+
+/* Key metrics in sidebar */
+.sidebar-metric {
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.sidebar-metric .label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.sidebar-metric .value {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Comparison indicators */
+.comparison-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs);
+}
+
+.comparison-indicator .comparison-value {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.comparison-indicator .comparison-arrow {
+  font-size: var(--font-size-xl);
+}
+
+.higher {
+  color: var(--error-color);
+}
+
+.lower {
+  color: var(--success-color);
+} 

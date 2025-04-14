@@ -1,0 +1,127 @@
+/* ==========================================================================
+   CSS Variables - defining global design tokens
+   ========================================================================== */
+
+:root {
+  /* Component colors - aligned with UI_COMPONENT_MAPPING from terminology.py */
+  --acquisition-color: #1f77b4;
+  --energy-color: #ff7f0e;
+  --maintenance-color: #2ca02c;
+  --infrastructure-color: #d62728;
+  --battery-color: #9467bd;
+  --insurance-color: #8c564b;
+  --taxes-color: #e377c2;
+  --residual-color: #7f7f7f;
+  
+  /* Vehicle type colors */
+  --bet-primary: #26A69A;
+  --diesel-primary: #FB8C00;
+  
+  /* Australian-themed accents */
+  --aus-green: #00843D;
+  --aus-gold: #FFCD00;
+  
+  /* Base theme colors - will be overridden by theme CSS files */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #eaeaea;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #dddddd;
+  --divider-color: #eeeeee;
+  
+  /* UI element colors */
+  --card-bg: #ffffff;
+  --card-border: #dddddd;
+  --card-shadow: rgba(0, 0, 0, 0.05);
+  --input-bg: #ffffff;
+  --input-border: #cccccc;
+  --input-focus-border: #26A69A;
+  --input-placeholder: #999999;
+
+  /* Status and feedback colors */
+  --success-color: #2ca02c;
+  --warning-color: #ff7f0e;
+  --error-color: #d62728;
+  --info-color: #1f77b4;
+  
+  /* Spacing variables */
+  --spacing-xs: 0.25rem;   /* 4px */
+  --spacing-sm: 0.5rem;    /* 8px */
+  --spacing-md: 1rem;      /* 16px */
+  --spacing-lg: 1.5rem;    /* 24px */
+  --spacing-xl: 2rem;      /* 32px */
+  --spacing-2xl: 2.5rem;   /* 40px */
+  --spacing-3xl: 3rem;     /* 48px */
+  
+  /* Border radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-full: 9999px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-md: 0 2px 5px rgba(0,0,0,0.1);
+  --shadow-lg: 0 4px 8px rgba(0,0,0,0.15);
+  --shadow-inset: inset 0 2px 4px rgba(0,0,0,0.05);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+  --transition-slow: 500ms ease;
+  
+  /* Z-index layers */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-tooltip: 1060;
+  
+  /* Sidebar specific */
+  --sidebar-width: 330px;
+  --sidebar-item-spacing: 0.5rem;
+  --sidebar-label-size: 0.85rem;
+  --sidebar-value-size: 0.9rem;
+  
+  /* Chart colors */
+  --chart-grid-color: rgba(0, 0, 0, 0.1);
+  --chart-axis-color: rgba(0, 0, 0, 0.5);
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.95);
+}
+
+/* Utility color classes */
+.color-acquisition { color: var(--acquisition-color); }
+.color-energy { color: var(--energy-color); }
+.color-maintenance { color: var(--maintenance-color); }
+.color-infrastructure { color: var(--infrastructure-color); }
+.color-battery { color: var(--battery-color); }
+.color-insurance { color: var(--insurance-color); }
+.color-taxes { color: var(--taxes-color); }
+.color-residual { color: var(--residual-color); }
+
+.color-bet { color: var(--bet-primary); }
+.color-diesel { color: var(--diesel-primary); }
+
+.color-success { color: var(--success-color); }
+.color-warning { color: var(--warning-color); }
+.color-error { color: var(--error-color); }
+.color-info { color: var(--info-color); }
+
+/* Background color utilities */
+.bg-acquisition { background-color: var(--acquisition-color); }
+.bg-energy { background-color: var(--energy-color); }
+.bg-maintenance { background-color: var(--maintenance-color); }
+.bg-infrastructure { background-color: var(--infrastructure-color); }
+.bg-battery { background-color: var(--battery-color); }
+.bg-insurance { background-color: var(--insurance-color); }
+.bg-taxes { background-color: var(--taxes-color); }
+.bg-residual { background-color: var(--residual-color); }
+
+.bg-bet { background-color: var(--bet-primary); }
+.bg-diesel { background-color: var(--diesel-primary); }
+
+.bg-primary { background-color: var(--bg-primary); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-tertiary { background-color: var(--bg-tertiary); } 

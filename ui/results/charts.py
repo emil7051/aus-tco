@@ -59,6 +59,7 @@ def render_charts(results: Dict[str, TCOOutput], comparison: ComparisonResult):
             cumulative_chart = create_cumulative_tco_chart(
                 result1, 
                 result2, 
+                comparison,
                 show_breakeven=settings["show_breakeven_point"],
                 height=settings["chart_height"]
             )
@@ -130,28 +131,135 @@ def render_charts(results: Dict[str, TCOOutput], comparison: ComparisonResult):
     # Sensitivity analysis (placeholder)
     with chart_tabs[3]:
         st.subheader("Sensitivity Analysis")
-        st.markdown("Sensitivity analysis functionality will be implemented in a future version.")
         
-        # Placeholder for sensitivity controls
-        st.slider(
-            "Electricity Price Adjustment (%)",
-            min_value=-50,
-            max_value=50,
-            value=0,
-            step=5,
-            key="sensitivity_electricity_price",
+        # Use actual sensitivity analysis from the TCO calculator
+        from tco_model.calculator import TCOCalculator
+        from utils.ui_terminology import get_australian_spelling, get_vehicle_type_color
+        calculator = TCOCalculator()
+        
+        # Create parameter selection options (using Australian spelling)
+        parameter_options = {
+            "electricity_price": get_australian_spelling("Electricity Price"),
+            "diesel_price": get_australian_spelling("Diesel Price"),
+            "annual_distance": get_australian_spelling("Annual Distance"),
+            "analysis_period": get_australian_spelling("Analysis Period"),
+            "acquisition_cost": get_australian_spelling("Vehicle Purchase Price"),
+            "maintenance_cost_per_km": get_australian_spelling("Maintenance Cost per km")
+        }
+        
+        # Allow user to select parameters to analyse
+        selected_parameter = st.selectbox(
+            "Select parameter to analyse",
+            options=list(parameter_options.keys()),
+            format_func=lambda x: parameter_options[x],
+            key="sensitivity_parameter"
         )
         
-        st.slider(
-            "Diesel Price Adjustment (%)",
-            min_value=-50,
-            max_value=50,
-            value=0,
-            step=5,
-            key="sensitivity_diesel_price",
-        )
+        # Get scenarios from results
+        scenario1 = results["vehicle_1"].scenario
+        scenario2 = results["vehicle_2"].scenario
         
-        st.button("Recalculate with Sensitivity Adjustments")
+        if scenario1 and scenario2:
+            # Generate variation range based on parameter
+            original_value1 = getattr(scenario1, selected_parameter, 0)
+            original_value2 = getattr(scenario2, selected_parameter, 0)
+            
+            # Create variation ranges (±30% in 6 steps)
+            variations1 = [original_value1 * (1 + pct/100) for pct in range(-30, 31, 10)]
+            variations2 = [original_value2 * (1 + pct/100) for pct in range(-30, 31, 10)]
+            
+            # Calculate sensitivity analysis
+            sensitivity1 = calculator.perform_sensitivity_analysis(
+                scenario1,
+                selected_parameter,
+                variations1
+            )
+            
+            sensitivity2 = calculator.perform_sensitivity_analysis(
+                scenario2,
+                selected_parameter,
+                variations2
+            )
+            
+            # Create sensitivity chart
+            fig = go.Figure()
+            
+            # Add traces for TCO using correct vehicle colours from terminology
+            fig.add_trace(go.Scatter(
+                x=[f"{v:.2f}" for v in sensitivity1.variation_values],
+                y=sensitivity1.tco_values,
+                mode="lines+markers",
+                name=f"{results['vehicle_1'].vehicle_name} TCO",
+                marker=dict(size=8),
+                line=dict(width=2, color=get_vehicle_type_color(results['vehicle_1'].vehicle_type))
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=[f"{v:.2f}" for v in sensitivity2.variation_values],
+                y=sensitivity2.tco_values,
+                mode="lines+markers",
+                name=f"{results['vehicle_2'].vehicle_name} TCO",
+                marker=dict(size=8),
+                line=dict(width=2, color=get_vehicle_type_color(results['vehicle_2'].vehicle_type))
+            ))
+            
+            # Update layout with Australian spelling
+            fig.update_layout(
+                title=f"TCO Sensitivity to {parameter_options[selected_parameter]}",
+                xaxis_title=f"{parameter_options[selected_parameter]} ({get_australian_spelling(sensitivity1.unit)})",
+                yaxis_title=f"{get_australian_spelling('Total Cost of Ownership')} ($)",
+                height=450,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Add tipping point if one exists
+            if has_tipping_point(sensitivity1, sensitivity2):
+                tipping_point = calculate_tipping_point(sensitivity1, sensitivity2)
+                if tipping_point:
+                    st.info(f"""
+                    **Tipping Point**: When {parameter_options[selected_parameter]} reaches 
+                    {tipping_point:.2f} {sensitivity1.unit}, the more cost-effective vehicle switches.
+                    """)
+            
+            # Add LCOD sensitivity chart
+            fig2 = go.Figure()
+            
+            # Add traces for LCOD using correct vehicle colours
+            fig2.add_trace(go.Scatter(
+                x=[f"{v:.2f}" for v in sensitivity1.variation_values],
+                y=sensitivity1.lcod_values,
+                mode="lines+markers",
+                name=f"{results['vehicle_1'].vehicle_name} LCOD",
+                marker=dict(size=8),
+                line=dict(width=2, color=get_vehicle_type_color(results['vehicle_1'].vehicle_type))
+            ))
+            
+            fig2.add_trace(go.Scatter(
+                x=[f"{v:.2f}" for v in sensitivity2.variation_values],
+                y=sensitivity2.lcod_values,
+                mode="lines+markers",
+                name=f"{results['vehicle_2'].vehicle_name} LCOD",
+                marker=dict(size=8),
+                line=dict(width=2, color=get_vehicle_type_color(results['vehicle_2'].vehicle_type))
+            ))
+            
+            # Use LCOD from terminology for consistency
+            from tco_model.terminology import LCOD
+            
+            # Update layout with Australian spelling
+            fig2.update_layout(
+                title=f"{LCOD} Sensitivity to {parameter_options[selected_parameter]}",
+                xaxis_title=f"{parameter_options[selected_parameter]} ({get_australian_spelling(sensitivity1.unit)})",
+                yaxis_title=f"{get_australian_spelling(LCOD)} ($/km)",
+                height=450,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.warning("Sensitivity analysis requires scenario data, which is not available in these results.")
     
     # Chart settings tab
     with chart_tabs[4]:
@@ -219,100 +327,90 @@ def render_chart_settings(settings: Dict[str, Any]):
 
 
 def create_cumulative_tco_chart(result1: TCOOutput, result2: TCOOutput, 
-                               show_breakeven: bool = True, height: int = 500) -> go.Figure:
+                              comparison: Optional[ComparisonResult] = None, show_breakeven: bool = True,
+                              height: int = 500) -> go.Figure:
     """
-    Create a cumulative TCO chart showing how TCO accumulates over time.
+    Create cumulative TCO chart with actual data
     
     Args:
-        result1: TCO result for the first vehicle
-        result2: TCO result for the second vehicle
-        show_breakeven: Whether to show the break-even point
+        result1: Actual TCO result for vehicle 1
+        result2: Actual TCO result for vehicle 2
+        comparison: Comparison result object with investment analysis
+        show_breakeven: Flag to show breakeven point
         height: Chart height in pixels
         
     Returns:
-        go.Figure: The plotly figure object for the chart
+        Plotly figure with cumulative TCO chart
     """
-    # Get the analysis period and vehicle names
-    years = range(result1.analysis_period_years)
-    vehicle1_name = result1.vehicle_name
-    vehicle2_name = result2.vehicle_name
+    # Get actual annual costs
+    annual_costs_1 = [cost.total for cost in result1.annual_costs]
+    annual_costs_2 = [cost.total for cost in result2.annual_costs]
     
-    # Calculate cumulative costs for both vehicles
-    v1_cumulative = np.cumsum([result1.annual_costs[year].total for year in years])
-    v2_cumulative = np.cumsum([result2.annual_costs[year].total for year in years])
+    # Calculate cumulative costs
+    cumulative_1 = np.cumsum(annual_costs_1)
+    cumulative_2 = np.cumsum(annual_costs_2)
     
-    # Create the figure
+    # Create years array
+    years = list(range(1, len(annual_costs_1) + 1))
+    
+    # Create figure
     fig = go.Figure()
     
-    # Add traces for both vehicles
+    # Get vehicle colours from terminology
+    from utils.ui_terminology import get_vehicle_type_color
+    
+    # Add traces
     fig.add_trace(go.Scatter(
-        x=list(years),
-        y=v1_cumulative,
-        mode="lines+markers",
-        name=vehicle1_name,
-        line=dict(color="#1f77b4", width=3),
-        hovertemplate="%{y:$,.0f}<extra></extra>",
+        x=years,
+        y=cumulative_1,
+        mode='lines+markers',
+        name=result1.vehicle_name,
+        line=dict(color=get_vehicle_type_color(result1.vehicle_type), width=3)
     ))
     
     fig.add_trace(go.Scatter(
-        x=list(years),
-        y=v2_cumulative,
-        mode="lines+markers",
-        name=vehicle2_name,
-        line=dict(color="#ff7f0e", width=3),
-        hovertemplate="%{y:$,.0f}<extra></extra>",
+        x=years,
+        y=cumulative_2,
+        mode='lines+markers',
+        name=result2.vehicle_name,
+        line=dict(color=get_vehicle_type_color(result2.vehicle_type), width=3)
     ))
     
-    # Apply theme and update layout
-    fig = apply_chart_theme(fig, height, title="Cumulative TCO Over Time")
+    # Add breakeven point if requested and exists in investment analysis
+    if show_breakeven and comparison and hasattr(comparison, 'investment_analysis') and comparison.investment_analysis:
+        if comparison.investment_analysis.has_payback:
+            payback_year = comparison.investment_analysis.payback_years
+            
+            # Only show if payback occurs within analysis period
+            if payback_year <= len(years):
+                # Interpolate costs at payback point
+                payback_cost = np.interp(payback_year, years, cumulative_1)
+                
+                fig.add_trace(go.Scatter(
+                    x=[payback_year],
+                    y=[payback_cost],
+                    mode='markers',
+                    marker=dict(size=12, symbol='star', color='green'),
+                    name='Breakeven Point',
+                    hoverinfo='text',
+                    hovertext=f'Breakeven at year {payback_year:.1f}'
+                ))
+    
+    # Update layout using Australian English
     fig.update_layout(
+        height=height,
+        margin=dict(l=20, r=20, t=30, b=20),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
         xaxis_title="Year",
-        yaxis_title="Cumulative Cost (AUD)",
-        legend_title="Vehicle",
-        hovermode="x unified",
+        yaxis_title="Cumulative Cost ($)",
+        hovermode="x unified"
     )
-    
-    # Add break-even point annotation if applicable and requested
-    settings = get_chart_settings()
-    if show_breakeven:
-        breakeven_found = False
-        for i in range(1, len(years)):
-            if (v1_cumulative[i-1] <= v2_cumulative[i-1] and v1_cumulative[i] > v2_cumulative[i]) or \
-            (v1_cumulative[i-1] >= v2_cumulative[i-1] and v1_cumulative[i] < v2_cumulative[i]):
-                try:
-                    # Linear interpolation to find more precise break-even point
-                    t = (v2_cumulative[i-1] - v1_cumulative[i-1]) / ((v1_cumulative[i] - v1_cumulative[i-1]) - (v2_cumulative[i] - v2_cumulative[i-1]))
-                    break_even_year = i-1 + t
-                    break_even_cost = v1_cumulative[i-1] + t * (v1_cumulative[i] - v1_cumulative[i-1])
-                    
-                    fig.add_annotation(
-                        x=break_even_year,
-                        y=break_even_cost,
-                        text=f"Break-even at {break_even_year:.1f} years",
-                        showarrow=True,
-                        arrowhead=2,
-                        arrowsize=1,
-                        arrowwidth=2,
-                        ax=50,
-                        ay=-50,
-                    )
-                    breakeven_found = True
-                    break
-                except Exception:
-                    # Skip if interpolation fails
-                    pass
-        
-        if not breakeven_found and settings["show_annotations"]:
-            # Add annotation indicating no break-even point
-            fig.add_annotation(
-                x=0.5,
-                y=0.9,
-                xref="paper",
-                yref="paper",
-                text="No break-even point found in analysis period",
-                showarrow=False,
-                font=dict(size=12, color="red"),
-            )
     
     return fig
 
@@ -752,3 +850,111 @@ def create_tco_breakdown_bar(result1: TCOOutput, result2: TCOOutput, height: int
         textposition="outside",
         hovertemplate="%{x}<br>Total TCO: %{y:$,.0f}<extra></extra>"
     )) 
+
+def create_annual_difference_chart(result1: TCOOutput, result2: TCOOutput, 
+                                comparison: ComparisonResult,
+                                height: int = 500) -> go.Figure:
+    """
+    Create chart showing annual cost differences between vehicles
+    
+    Args:
+        result1: TCO result for vehicle 1
+        result2: TCO result for vehicle 2
+        comparison: Comparison result
+        height: Chart height in pixels
+        
+    Returns:
+        Plotly figure with annual cost differences
+    """
+    # Get annual costs
+    annual_costs_1 = [cost.total for cost in result1.annual_costs]
+    annual_costs_2 = [cost.total for cost in result2.annual_costs]
+    
+    # Calculate differences
+    differences = [cost2 - cost1 for cost1, cost2 in zip(annual_costs_1, annual_costs_2)]
+    
+    # Create years array
+    years = list(range(1, len(annual_costs_1) + 1))
+    
+    # Create figure
+    fig = go.Figure()
+    
+    # Colors for cost differences
+    positive_color = 'rgba(255, 0, 0, 0.7)'  # Red for higher costs
+    negative_color = 'rgba(0, 128, 0, 0.7)'  # Green for lower costs
+    
+    # Add difference bars with appropriate colors
+    colors = [positive_color if diff > 0 else negative_color for diff in differences]
+    
+    fig.add_trace(go.Bar(
+        x=years,
+        y=differences,
+        marker_color=colors,
+        name='Cost Difference',
+        text=[f"{diff:+,.0f}" for diff in differences],
+        textposition='outside',
+        hovertemplate='Year %{x}<br>Difference: $%{y:,.0f}<extra></extra>'
+    ))
+    
+    # Add zero line
+    fig.add_shape(
+        type='line',
+        x0=min(years),
+        y0=0,
+        x1=max(years),
+        y1=0,
+        line=dict(color='black', width=1, dash='dash')
+    )
+    
+    # Update layout
+    fig.update_layout(
+        height=height,
+        title="Annual Cost Difference",
+        xaxis_title="Year",
+        yaxis_title=f"Cost Difference ({result2.vehicle_name} - {result1.vehicle_name})",
+        showlegend=False,
+        margin=dict(l=20, r=20, t=50, b=20),
+    )
+    
+    # Add annotation explaining the chart
+    fig.add_annotation(
+        x=0.5,
+        y=1.05,
+        xref='paper',
+        yref='paper',
+        text=f"Positive values mean {result2.vehicle_name} costs more; negative values mean {result1.vehicle_name} costs more",
+        showarrow=False,
+        font=dict(size=10),
+        align='center',
+    )
+    
+    return fig 
+
+def has_tipping_point(sensitivity1, sensitivity2):
+    """Check if there's a tipping point where TCO curves cross."""
+    # Compare first and last TCO difference signs
+    first_diff = sensitivity1.tco_values[0] - sensitivity2.tco_values[0]
+    last_diff = sensitivity1.tco_values[-1] - sensitivity2.tco_values[-1]
+    
+    # If signs are different, there's a crossing point
+    return (first_diff * last_diff) < 0
+
+
+def calculate_tipping_point(sensitivity1, sensitivity2):
+    """Calculate the parameter value where TCO curves cross."""
+    # Find where curves cross
+    for i in range(len(sensitivity1.tco_values) - 1):
+        diff1 = sensitivity1.tco_values[i] - sensitivity2.tco_values[i]
+        diff2 = sensitivity1.tco_values[i+1] - sensitivity2.tco_values[i+1]
+        
+        # Check if sign changed
+        if (diff1 * diff2) < 0:
+            # Interpolate to find intersection
+            x1 = sensitivity1.variation_values[i]
+            x2 = sensitivity1.variation_values[i+1]
+            
+            # Linear interpolation
+            ratio = abs(diff1) / (abs(diff1) + abs(diff2))
+            return x1 + ratio * (x2 - x1)
+    
+    return None 

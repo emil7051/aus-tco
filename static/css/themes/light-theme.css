@@ -1,0 +1,55 @@
+/* ==========================================================================
+   Light Theme
+   ========================================================================== */
+
+:root {
+  /* Base theme colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #eaeaea;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #dddddd;
+  --divider-color: #eeeeee;
+  
+  /* Light theme specific RGB values for opacity usage */
+  --bet-primary-rgb: 38, 166, 154;
+  --diesel-primary-rgb: 251, 140, 0;
+  --error-color-rgb: 214, 39, 40;
+  --warning-color-rgb: 255, 127, 14;
+  --success-color-rgb: 44, 160, 44;
+  
+  /* UI element colors */
+  --card-bg: #ffffff;
+  --card-border: #dddddd;
+  --card-shadow: rgba(0, 0, 0, 0.05);
+  --input-bg: #ffffff;
+  --input-border: #cccccc;
+  --input-focus-border: #26A69A;
+  --input-placeholder: #999999;
+  
+  /* Chart colors */
+  --chart-grid-color: rgba(0, 0, 0, 0.1);
+  --chart-axis-color: rgba(0, 0, 0, 0.5);
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.95);
+}
+
+/* Light theme specific adjustments */
+.stApp {
+  background-color: var(--bg-primary);
+}
+
+.sidebar .stButton > button {
+  background-color: var(--bet-primary);
+  color: white;
+}
+
+.stTabs [aria-selected="true"] {
+  background-color: var(--bet-primary);
+  color: white;
+}
+
+/* Table striping for better readability */
+.table-striped tr:nth-child(even) td {
+  background-color: var(--bg-secondary);
+} 

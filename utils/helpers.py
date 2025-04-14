@@ -22,6 +22,13 @@ from tco_model.models import (
     InfrastructureParameters, ResidualValueParameters
 )
 
+from tco_model.terminology import (
+    UI_COMPONENT_LABELS,
+    UI_COMPONENT_MAPPING,
+    VEHICLE_TYPE_LABELS,
+    COST_COMPONENTS
+)
+
 # Type variable for generic functions
 T = TypeVar('T', bound=BaseModel)
 
@@ -1050,32 +1057,61 @@ def initialize_nested_state(key: str, default_value: Any) -> None:
 
 # --- Formatting Utilities ---
 
-def format_currency(value: float, decimals: int = 0) -> str:
+def format_currency(value: float, include_cents: bool = False) -> str:
     """
-    Format a value as Australian currency.
+    Format a value as Australian dollars.
     
     Args:
-        value: Value to format
-        decimals: Number of decimal places to show
+        value: The numeric value to format
+        include_cents: Whether to include cents in the formatted output
         
     Returns:
-        Formatted currency string
+        A formatted currency string
     """
-    return f"${value:,.{decimals}f}"
+    # Handle negative values
+    is_negative = value < 0
+    abs_value = abs(value)
+    
+    # Format with or without cents
+    if include_cents:
+        formatted = "${:,.2f}".format(abs_value)
+    else:
+        # Round to nearest dollar and format
+        formatted = "${:,.0f}".format(round(abs_value))
+    
+    # Add negative sign if needed
+    if is_negative:
+        formatted = "-" + formatted
+        
+    return formatted
 
 
-def format_percentage(value: float, decimals: int = 1) -> str:
+def format_percentage(value: float, decimal_places: int = 1) -> str:
     """
-    Format a value as a percentage string.
+    Format a value as a percentage.
     
     Args:
-        value: The value to format (e.g., 0.15 for 15%)
-        decimals: Number of decimal places to display
+        value: The value to format as percentage
+        decimal_places: Number of decimal places to include
         
     Returns:
-        Formatted percentage string (e.g., "15.0%")
+        A formatted percentage string
     """
-    return f"{value * 100:.{decimals}f}%"
+    format_str = "{:." + str(decimal_places) + "f}%"
+    return format_str.format(value)
+
+
+def get_vehicle_type_label(vehicle_type: str) -> str:
+    """
+    Get the user-friendly label for a vehicle type.
+    
+    Args:
+        vehicle_type: The vehicle type identifier
+        
+    Returns:
+        The user-friendly label
+    """
+    return VEHICLE_TYPE_LABELS.get(vehicle_type, vehicle_type.replace('_', ' ').title())
 
 
 def handle_vehicle_switch(old_type: str, new_type: str, vehicle_number: int) -> None:

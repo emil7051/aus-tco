@@ -1,9 +1,0 @@
-# Economic Parameters Default Configuration
-# All monetary values in AUD
-
-# General economic parameters
-general:
-  discount_rate_real: 0.07  # 7% real discount rate
-  inflation_rate: 0.025     # 2.5% annual inflation
-  analysis_period_years: 15 # Default analysis period
- 

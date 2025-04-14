@@ -16,6 +16,8 @@ from utils.helpers import (
     format_currency,
     format_percentage
 )
+from utils.ui_components import UIComponentFactory
+from ui.inputs.parameter_helpers import render_parameter_with_impact
 
 
 # Constants for state keys
@@ -54,6 +56,169 @@ def render_economic_inputs(vehicle_number: int) -> None:
     # Carbon tax tab
     with tabs[2]:
         render_carbon_tax(state_prefix)
+
+
+def render_economic_parameters(vehicle_number: int, state_prefix: str, vehicle_type: str) -> None:
+    """
+    Render enhanced economic parameter inputs
+    
+    Args:
+        vehicle_number: Vehicle number
+        state_prefix: State key prefix
+        vehicle_type: Vehicle type
+    """
+    # Create a card for economic parameters
+    with UIComponentFactory.create_card("Economic Parameters", 
+                                      f"v{vehicle_number}_economic", 
+                                      vehicle_type):
+        # Create responsive grid
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Discount rate input with impact indicator
+            discount_rate = render_parameter_with_impact(
+                "Discount Rate (%)",
+                f"{state_prefix}.economic.{STATE_DISCOUNT_RATE}",
+                default_value=get_safe_state_value(f"{state_prefix}.economic.{STATE_DISCOUNT_RATE}", 0.07),
+                min_value=0.0,
+                max_value=0.20,
+                impact_level="high",
+                step=0.01,
+                format="%.2f",
+                help_text="Real discount rate used for NPV calculations"
+            )
+            
+            # Inflation rate
+            inflation_rate = render_parameter_with_impact(
+                "Inflation Rate (%)",
+                f"{state_prefix}.economic.{STATE_INFLATION_RATE}",
+                default_value=get_safe_state_value(f"{state_prefix}.economic.{STATE_INFLATION_RATE}", 0.025),
+                min_value=0.0,
+                max_value=0.10,
+                impact_level="medium",
+                step=0.005,
+                format="%.3f",
+                help_text="Annual inflation rate"
+            )
+        
+        with col2:
+            # Analysis period
+            analysis_period = render_parameter_with_impact(
+                "Analysis Period (years)",
+                f"{state_prefix}.economic.{STATE_ANALYSIS_PERIOD}",
+                default_value=get_safe_state_value(f"{state_prefix}.economic.{STATE_ANALYSIS_PERIOD}", 10),
+                min_value=1,
+                max_value=30,
+                impact_level="high",
+                step=1,
+                help_text="Time horizon for TCO analysis"
+            )
+            
+            # Carbon tax rate
+            carbon_tax_rate = render_parameter_with_impact(
+                "Carbon Tax Rate ($/tonne)",
+                f"{state_prefix}.economic.{STATE_CARBON_TAX_RATE}",
+                default_value=get_safe_state_value(f"{state_prefix}.economic.{STATE_CARBON_TAX_RATE}", 25.0),
+                min_value=0.0,
+                max_value=200.0,
+                impact_level="low",
+                step=5.0,
+                help_text="Carbon tax rate in AUD per tonne of CO2"
+            )
+    
+    # Create a card for energy prices
+    with UIComponentFactory.create_card("Energy Prices", 
+                                      f"v{vehicle_number}_energy", 
+                                      vehicle_type):
+        # Energy price parameters based on vehicle type
+        if vehicle_type == "bet":
+            # Electricity prices for BET
+            electricity_price = render_parameter_with_impact(
+                "Electricity Price ($/kWh)",
+                f"{state_prefix}.economic.energy.electricity_price",
+                default_value=get_safe_state_value(f"{state_prefix}.economic.energy.electricity_price", 0.25),
+                min_value=0.05,
+                max_value=0.80,
+                step=0.01,
+                format="%.3f",
+                impact_level="high",
+                help_text="Average price per kWh"
+            )
+            
+            # Optional time-of-use pricing
+            tou_pricing = st.checkbox(
+                "Use Time-of-Use Pricing",
+                value=get_safe_state_value(f"{state_prefix}.economic.energy.tou_enabled", False),
+                key=f"{state_prefix}.economic.energy.tou_enabled_input",
+                help="Enable time-of-use electricity pricing"
+            )
+            set_safe_state_value(f"{state_prefix}.economic.energy.tou_enabled", tou_pricing)
+            
+            if tou_pricing:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    off_peak_price = render_parameter_with_impact(
+                        "Off-Peak Price ($/kWh)",
+                        f"{state_prefix}.economic.energy.off_peak_price",
+                        default_value=get_safe_state_value(f"{state_prefix}.economic.energy.off_peak_price", 0.15),
+                        min_value=0.05,
+                        max_value=0.50,
+                        step=0.01,
+                        format="%.3f",
+                        impact_level="medium",
+                        help_text="Price per kWh during off-peak hours"
+                    )
+                
+                with col2:
+                    off_peak_percentage = render_parameter_with_impact(
+                        "Off-Peak Charging (%)",
+                        f"{state_prefix}.economic.energy.off_peak_percentage",
+                        default_value=get_safe_state_value(f"{state_prefix}.economic.energy.off_peak_percentage", 0.8),
+                        min_value=0.0,
+                        max_value=1.0,
+                        step=0.05,
+                        format="%.2f",
+                        impact_level="medium",
+                        help_text="Proportion of charging done during off-peak hours"
+                    )
+                
+                peak_price = render_parameter_with_impact(
+                    "Peak Price ($/kWh)",
+                    f"{state_prefix}.economic.energy.peak_price",
+                    default_value=get_safe_state_value(f"{state_prefix}.economic.energy.peak_price", 0.35),
+                    min_value=0.10,
+                    max_value=1.00,
+                    step=0.01,
+                    format="%.3f",
+                    impact_level="medium",
+                    help_text="Price per kWh during peak hours"
+                )
+        else:
+            # Diesel prices for diesel vehicles
+            diesel_price = render_parameter_with_impact(
+                "Diesel Price ($/L)",
+                f"{state_prefix}.economic.energy.diesel_price",
+                default_value=get_safe_state_value(f"{state_prefix}.economic.energy.diesel_price", 1.80),
+                min_value=0.50,
+                max_value=5.00,
+                step=0.05,
+                format="%.2f",
+                impact_level="high",
+                help_text="Current price per liter of diesel fuel"
+            )
+            
+            diesel_price_annual_change = render_parameter_with_impact(
+                "Annual Price Change (%)",
+                f"{state_prefix}.economic.energy.diesel_price_annual_change",
+                default_value=get_safe_state_value(f"{state_prefix}.economic.energy.diesel_price_annual_change", 0.025),
+                min_value=-0.05,
+                max_value=0.10,
+                step=0.005,
+                format="%.3f",
+                impact_level="medium",
+                help_text="Annual percentage change in diesel price"
+            )
 
 
 def render_general_economic_parameters(state_prefix: str) -> None:
