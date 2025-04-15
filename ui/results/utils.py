@@ -23,6 +23,7 @@ import io
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from PIL import Image, ImageDraw
 
 # Common cost component mappings
 # These represent the standardized cost categories shown across all visualizations
@@ -251,13 +252,15 @@ def validate_tco_results(results: Dict[str, TCOOutput]) -> bool:
     return True
 
 
-def generate_results_export(results, comparison):
+def generate_results_export(results, comparison, include_emissions=True, include_charts=True):
     """
     Generate Excel export with all TCO model data
     
     Args:
         results: Dictionary of actual TCO results
         comparison: Actual comparison result object
+        include_emissions: Whether to include emissions data in the export
+        include_charts: Whether to include chart images in the export
         
     Returns:
         Excel file content as bytes
@@ -273,8 +276,16 @@ def generate_results_export(results, comparison):
     summary_sheet = wb.create_sheet("Summary")
     annual_sheet = wb.create_sheet("Annual Costs")
     components_sheet = wb.create_sheet("Cost Components")
-    emissions_sheet = wb.create_sheet("Emissions")
+    
+    # Only include emissions if requested
+    if include_emissions:
+        emissions_sheet = wb.create_sheet("Emissions")
+    
     params_sheet = wb.create_sheet("Parameters")
+    
+    # Add charts sheet if requested
+    if include_charts:
+        charts_sheet = wb.create_sheet("Charts")
     
     # Get results
     result1 = results["vehicle_1"]
@@ -287,17 +298,25 @@ def generate_results_export(results, comparison):
         ["Metric", result1.vehicle_name, result2.vehicle_name],
         ["Total TCO", result1.total_tco, result2.total_tco],
         ["Cost per km", result1.lcod, result2.lcod],
-        ["Total CO2 (tonnes)", result1.emissions.total_co2_tonnes if hasattr(result1, 'emissions') else "N/A", 
+    ]
+    
+    # Only include emissions in summary if requested
+    if include_emissions:
+        summary_data.extend([
+            ["Total CO2 (tonnes)", result1.emissions.total_co2_tonnes if hasattr(result1, 'emissions') else "N/A", 
                              result2.emissions.total_co2_tonnes if hasattr(result2, 'emissions') else "N/A"],
-        ["CO2 per km (g/km)", result1.emissions.co2_per_km if hasattr(result1, 'emissions') else "N/A", 
+            ["CO2 per km (g/km)", result1.emissions.co2_per_km if hasattr(result1, 'emissions') else "N/A", 
                              result2.emissions.co2_per_km if hasattr(result2, 'emissions') else "N/A"],
+        ])
+    
+    summary_data.extend([
         ["", "", ""],
         ["Comparison", "", ""],
         ["Cheaper option", comparison.cheaper_option == 1 and result1.vehicle_name or result2.vehicle_name, ""],
         ["TCO difference", abs(comparison.tco_difference), f"{abs(comparison.tco_percentage):.1f}%"],
         ["", "", ""],
         ["Investment Analysis", "", ""],
-    ]
+    ])
     
     # Add investment analysis if available
     if hasattr(comparison, 'investment_analysis') and comparison.investment_analysis:
@@ -342,76 +361,114 @@ def generate_results_export(results, comparison):
     for row in dataframe_to_rows(component_df, index=False, header=True):
         components_sheet.append(row)
     
-    # --- Emissions Sheet ---
-    if hasattr(result1, 'emissions') and hasattr(result2, 'emissions'):
-        emissions_data = {
-            "Year": years,
-            f"{result1.vehicle_name} CO2 (tonnes)": result1.emissions.annual_co2_tonnes + [0] * (len(years) - len(result1.emissions.annual_co2_tonnes)),
-            f"{result2.vehicle_name} CO2 (tonnes)": result2.emissions.annual_co2_tonnes + [0] * (len(years) - len(result2.emissions.annual_co2_tonnes)),
-        }
+    # --- Emissions Sheet (if requested) ---
+    if include_emissions:
+        if hasattr(result1, 'emissions') and hasattr(result2, 'emissions'):
+            emissions_data = {
+                "Year": years,
+                f"{result1.vehicle_name} CO2 (tonnes)": result1.emissions.annual_co2_tonnes + [0] * (len(years) - len(result1.emissions.annual_co2_tonnes)),
+                f"{result2.vehicle_name} CO2 (tonnes)": result2.emissions.annual_co2_tonnes + [0] * (len(years) - len(result2.emissions.annual_co2_tonnes)),
+            }
+            
+            # Add cumulative emissions
+            emissions_data[f"{result1.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result1.vehicle_name} CO2 (tonnes)"])
+            emissions_data[f"{result2.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result2.vehicle_name} CO2 (tonnes)"])
+            
+            emissions_df = pd.DataFrame(emissions_data)
+            
+            # Add emissions summary
+            emissions_summary = [
+                ["", "", ""],
+                ["Summary Metrics", result1.vehicle_name, result2.vehicle_name],
+                ["Total CO2 (tonnes)", result1.emissions.total_co2_tonnes, result2.emissions.total_co2_tonnes],
+                ["CO2 per km (g/km)", result1.emissions.co2_per_km, result2.emissions.co2_per_km],
+                ["Energy consumption (kWh)", result1.emissions.energy_consumption_kwh, result2.emissions.energy_consumption_kwh],
+                ["Energy per km (kWh/km)", result1.emissions.energy_per_km, result2.emissions.energy_per_km],
+                ["Trees equivalent", result1.emissions.trees_equivalent, result2.emissions.trees_equivalent],
+                ["Homes equivalent", result1.emissions.homes_equivalent, result2.emissions.homes_equivalent],
+                ["Cars equivalent", result1.emissions.cars_equivalent, result2.emissions.cars_equivalent],
+            ]
+        else:
+            # Calculate emissions data using TCO calculator if not available in results
+            from tco_model.calculator import TCOCalculator
+            calculator = TCOCalculator()
+            
+            # Generate emissions data based on vehicle types and parameters
+            # This ensures we always have emissions data, even for older TCO results
+            estimated_emissions1 = calculator.estimate_emissions(result1)
+            estimated_emissions2 = calculator.estimate_emissions(result2)
+            
+            # Create emissions data with calculated values
+            emissions_data = {
+                "Year": years,
+                f"{result1.vehicle_name} CO2 (tonnes)": estimated_emissions1.annual_co2_tonnes + [0] * (len(years) - len(estimated_emissions1.annual_co2_tonnes)),
+                f"{result2.vehicle_name} CO2 (tonnes)": estimated_emissions2.annual_co2_tonnes + [0] * (len(years) - len(estimated_emissions2.annual_co2_tonnes)),
+            }
+            
+            # Add cumulative emissions
+            emissions_data[f"{result1.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result1.vehicle_name} CO2 (tonnes)"])
+            emissions_data[f"{result2.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result2.vehicle_name} CO2 (tonnes)"])
+            
+            emissions_df = pd.DataFrame(emissions_data)
+            
+            # Add emissions summary with calculated values
+            emissions_summary = [
+                ["", "", ""],
+                ["Summary Metrics", result1.vehicle_name, result2.vehicle_name],
+                ["Total CO2 (tonnes)", estimated_emissions1.total_co2_tonnes, estimated_emissions2.total_co2_tonnes],
+                ["CO2 per km (g/km)", estimated_emissions1.co2_per_km, estimated_emissions2.co2_per_km],
+                ["Energy consumption (kWh)", estimated_emissions1.energy_consumption_kwh, estimated_emissions2.energy_consumption_kwh],
+                ["Energy per km (kWh/km)", estimated_emissions1.energy_per_km, estimated_emissions2.energy_per_km],
+                ["Trees equivalent", estimated_emissions1.trees_equivalent, estimated_emissions2.trees_equivalent],
+                ["Homes equivalent", estimated_emissions1.homes_equivalent, estimated_emissions2.homes_equivalent],
+                ["Cars equivalent", estimated_emissions1.cars_equivalent, estimated_emissions2.cars_equivalent],
+            ]
         
-        # Add cumulative emissions
-        emissions_data[f"{result1.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result1.vehicle_name} CO2 (tonnes)"])
-        emissions_data[f"{result2.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result2.vehicle_name} CO2 (tonnes)"])
-        
-        emissions_df = pd.DataFrame(emissions_data)
+        # Add to sheet
+        for row in dataframe_to_rows(emissions_df, index=False, header=True):
+            emissions_sheet.append(row)
         
         # Add emissions summary
-        emissions_summary = [
-            ["", "", ""],
-            ["Summary Metrics", result1.vehicle_name, result2.vehicle_name],
-            ["Total CO2 (tonnes)", result1.emissions.total_co2_tonnes, result2.emissions.total_co2_tonnes],
-            ["CO2 per km (g/km)", result1.emissions.co2_per_km, result2.emissions.co2_per_km],
-            ["Energy consumption (kWh)", result1.emissions.energy_consumption_kwh, result2.emissions.energy_consumption_kwh],
-            ["Energy per km (kWh/km)", result1.emissions.energy_per_km, result2.emissions.energy_per_km],
-            ["Trees equivalent", result1.emissions.trees_equivalent, result2.emissions.trees_equivalent],
-            ["Homes equivalent", result1.emissions.homes_equivalent, result2.emissions.homes_equivalent],
-            ["Cars equivalent", result1.emissions.cars_equivalent, result2.emissions.cars_equivalent],
-        ]
-    else:
-        # Calculate emissions data using TCO calculator if not available in results
-        from tco_model.calculator import TCOCalculator
-        calculator = TCOCalculator()
-        
-        # Generate emissions data based on vehicle types and parameters
-        # This ensures we always have emissions data, even for older TCO results
-        estimated_emissions1 = calculator.estimate_emissions(result1)
-        estimated_emissions2 = calculator.estimate_emissions(result2)
-        
-        # Create emissions data with calculated values
-        emissions_data = {
-            "Year": years,
-            f"{result1.vehicle_name} CO2 (tonnes)": estimated_emissions1.annual_co2_tonnes + [0] * (len(years) - len(estimated_emissions1.annual_co2_tonnes)),
-            f"{result2.vehicle_name} CO2 (tonnes)": estimated_emissions2.annual_co2_tonnes + [0] * (len(years) - len(estimated_emissions2.annual_co2_tonnes)),
-        }
-        
-        # Add cumulative emissions
-        emissions_data[f"{result1.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result1.vehicle_name} CO2 (tonnes)"])
-        emissions_data[f"{result2.vehicle_name} Cumulative CO2"] = np.cumsum(emissions_data[f"{result2.vehicle_name} CO2 (tonnes)"])
-        
-        emissions_df = pd.DataFrame(emissions_data)
-        
-        # Add emissions summary with calculated values
-        emissions_summary = [
-            ["", "", ""],
-            ["Summary Metrics", result1.vehicle_name, result2.vehicle_name],
-            ["Total CO2 (tonnes)", estimated_emissions1.total_co2_tonnes, estimated_emissions2.total_co2_tonnes],
-            ["CO2 per km (g/km)", estimated_emissions1.co2_per_km, estimated_emissions2.co2_per_km],
-            ["Energy consumption (kWh)", estimated_emissions1.energy_consumption_kwh, estimated_emissions2.energy_consumption_kwh],
-            ["Energy per km (kWh/km)", estimated_emissions1.energy_per_km, estimated_emissions2.energy_per_km],
-            ["Trees equivalent", estimated_emissions1.trees_equivalent, estimated_emissions2.trees_equivalent],
-            ["Homes equivalent", estimated_emissions1.homes_equivalent, estimated_emissions2.homes_equivalent],
-            ["Cars equivalent", estimated_emissions1.cars_equivalent, estimated_emissions2.cars_equivalent],
-        ]
+        for i, row in enumerate(emissions_summary):
+            for j, value in enumerate(row):
+                emissions_sheet.cell(row=len(emissions_df) + 3 + i, column=j+1, value=value)
     
-    # Add to sheet
-    for row in dataframe_to_rows(emissions_df, index=False, header=True):
-        emissions_sheet.append(row)
-    
-    # Add emissions summary
-    for i, row in enumerate(emissions_summary):
-        for j, value in enumerate(row):
-            emissions_sheet.cell(row=len(emissions_df) + 3 + i, column=j+1, value=value)
+    # --- Charts Sheet (if requested) ---
+    if include_charts:
+        from ui.results.charts import create_cost_breakdown_chart, create_cumulative_tco_chart
+        import plotly.graph_objects as go
+        
+        # Row counter for charts
+        chart_row = 1
+        
+        # Add cost breakdown chart
+        charts_sheet.cell(row=chart_row, column=1, value="Cost Breakdown")
+        chart_row += 1
+        
+        # Create and save cost breakdown chart
+        cost_chart = create_cost_breakdown_chart(result1)
+        img_bytes = export_chart_as_image(cost_chart, "png")
+        
+        # Add image to workbook
+        img = Image(io.BytesIO(img_bytes))
+        img.width = 500
+        img.height = 300
+        charts_sheet.add_image(img, f'A{chart_row}')
+        chart_row += 20  # Leave space for the image
+        
+        # Add cumulative TCO chart
+        charts_sheet.cell(row=chart_row, column=1, value="Cumulative TCO")
+        chart_row += 1
+        
+        # Create and save cumulative TCO chart
+        cumul_chart = create_cumulative_tco_chart(result1, result2, comparison)
+        img_bytes = export_chart_as_image(cumul_chart, "png")
+        
+        # Add image to workbook
+        img = Image(io.BytesIO(img_bytes))
+        img.width = 500
+        img.height = 300
+        charts_sheet.add_image(img, f'A{chart_row}')
     
     # --- Parameters Sheet ---
     # Extract parameters from scenarios
@@ -468,7 +525,7 @@ def generate_results_export(results, comparison):
         params_sheet.cell(row=1, column=1, value="Parameter data not available")
     
     # Apply styling (header fonts, column widths, etc.)
-    for sheet in [summary_sheet, annual_sheet, components_sheet, emissions_sheet, params_sheet]:
+    for sheet in wb.worksheets:
         # Set column widths
         for col in range(1, 6):
             column_letter = get_column_letter(col)
@@ -485,6 +542,71 @@ def generate_results_export(results, comparison):
     buffer.seek(0)
     
     return buffer.getvalue()
+
+
+def export_chart_as_image(chart, img_format="png"):
+    """
+    Export a plotly chart as an image.
+    
+    Args:
+        chart: Plotly chart figure
+        img_format: Image format (png, jpeg, svg, pdf)
+        
+    Returns:
+        Bytes containing the image data
+    """
+    import plotly.io as pio
+    
+    # Set the image dimensions
+    width = 800
+    height = 600
+    
+    # The following exports may raise exceptions if required dependencies
+    # are not installed (like kaleido for PNG export)
+    try:
+        # Try to export as bytes directly
+        img_bytes = pio.to_image(chart, format=img_format, width=width, height=height)
+        return img_bytes
+    except Exception as e:
+        # Fallback to base64 and decode
+        try:
+            import base64
+            img_base64 = pio.to_image(chart, format=img_format, width=width, height=height, engine="kaleido")
+            return img_base64
+        except Exception as sub_e:
+            # If all export methods fail, return a simple error image
+            # This avoids breaking the export completely
+            return create_error_image(str(e))
+
+
+def create_error_image(error_message):
+    """
+    Create a simple error image when chart export fails.
+    
+    Args:
+        error_message: Error message to display
+        
+    Returns:
+        Bytes containing a simple error image
+    """
+    try:
+        # Create a blank image with white background
+        width, height = 400, 200
+        image = Image.new('RGB', (width, height), color='white')
+        draw = ImageDraw.Draw(image)
+        
+        # Add error message
+        draw.text((20, 20), "Chart Export Error", fill='red')
+        draw.text((20, 50), error_message[:50], fill='black')
+        
+        # Save to bytes
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG')
+        buffer.seek(0)
+        return buffer.getvalue()
+    except Exception:
+        # Ultimate fallback - return empty bytes if even PIL fails
+        return b''
 
 
 def extract_comparable_attributes(obj1, obj2):
@@ -505,16 +627,25 @@ def extract_comparable_attributes(obj1, obj2):
     
     for attr in all_attrs:
         # Skip private attributes, methods, and callable attributes
-        if attr.startswith('_') or callable(getattr(obj1, attr)) or attr == 'model_config':
+        if attr.startswith('_') or attr == 'model_config':
             continue
         
-        # Get values
-        value1 = getattr(obj1, attr)
-        value2 = getattr(obj2, attr)
-        
-        # Only include simple values (skip nested objects)
-        if isinstance(value1, (int, float, str, bool)) and isinstance(value2, (int, float, str, bool)):
-            attributes[attr] = (value1, value2)
+        try:
+            # Try to get the attribute values
+            value1 = getattr(obj1, attr)
+            
+            # Skip callable attributes
+            if callable(value1):
+                continue
+                
+            value2 = getattr(obj2, attr)
+            
+            # Only include simple values (skip nested objects)
+            if isinstance(value1, (int, float, str, bool)) and isinstance(value2, (int, float, str, bool)):
+                attributes[attr] = (value1, value2)
+        except AttributeError:
+            # Skip attributes that raise AttributeError
+            continue
     
     return attributes
 

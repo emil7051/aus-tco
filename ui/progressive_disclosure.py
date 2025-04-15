@@ -24,6 +24,7 @@ from ui.inputs.economic import render_economic_inputs
 from ui.inputs.financing import render_financing_inputs
 from ui.results.display import display_results
 from ui.guide import render_guide
+from tco_model.schemas import VehicleType
 
 
 def implement_progressive_disclosure():
@@ -67,6 +68,9 @@ def implement_progressive_disclosure():
 def render_configuration_step():
     """
     Render the vehicle configuration step.
+    
+    This step allows users to configure vehicle parameters, operational settings,
+    economic parameters, and financing options for the TCO analysis.
     """
     render_section_header(
         "Vehicle Configuration", 
@@ -87,8 +91,13 @@ def render_configuration_step():
     
     with col1:
         # Get vehicle type for display in header
-        v1_type = st.session_state.get("vehicle_1_input", {}).vehicle.type
-        v1_label = "BET" if v1_type == "battery_electric" else "ICE"
+        vehicle_1 = st.session_state.get("vehicle_1_input", {})
+        v1_type = getattr(vehicle_1.get("vehicle", {}), "type", None)
+        
+        # Use standard abbreviations for display
+        v1_label = "BET" if v1_type == VehicleType.BATTERY_ELECTRIC else \
+                   "ICE" if v1_type == VehicleType.DIESEL else \
+                   "Vehicle"
         
         render_subsection_header(f"Vehicle 1 ({v1_label})", "🚚")
         render_vehicle_inputs(vehicle_number=1)
@@ -98,8 +107,13 @@ def render_configuration_step():
         
     with col2:
         # Get vehicle type for display in header
-        v2_type = st.session_state.get("vehicle_2_input", {}).vehicle.type
-        v2_label = "BET" if v2_type == "battery_electric" else "ICE"
+        vehicle_2 = st.session_state.get("vehicle_2_input", {})
+        v2_type = getattr(vehicle_2.get("vehicle", {}), "type", None)
+        
+        # Use standard abbreviations for display
+        v2_label = "BET" if v2_type == VehicleType.BATTERY_ELECTRIC else \
+                   "ICE" if v2_type == VehicleType.DIESEL else \
+                   "Vehicle"
         
         render_subsection_header(f"Vehicle 2 ({v2_label})", "🚚")
         render_vehicle_inputs(vehicle_number=2)
@@ -233,3 +247,51 @@ def render_guide_step():
         "Learn how to use the TCO Modeller and understand the analysis methodology."
     )
     render_guide() 
+
+def get_available_steps(navigation_state=None):
+    """
+    Get a list of available steps based on navigation state.
+    
+    Args:
+        navigation_state: Optional NavigationState dataclass or dictionary with navigation state
+        
+    Returns:
+        List of available step IDs
+    """
+    # Default steps that are always available
+    available_steps = ["introduction", "config", "guide", "vehicle_parameters"]
+    
+    # Get the current step from navigation state
+    current_step = None
+    if navigation_state:
+        # Handle both dict and NavigationState dataclass
+        if hasattr(navigation_state, 'get'):  # Dict-like object
+            current_step = navigation_state.get("current_step")
+            has_results = navigation_state.get("has_results", False)
+        elif hasattr(navigation_state, '__dataclass_fields__'):  # Dataclass
+            current_step = getattr(navigation_state, "current_step", None)
+            has_results = getattr(navigation_state, "has_results", False)
+        
+        # Include completed steps and next available step
+        completed_steps = []
+        if hasattr(navigation_state, 'get'):
+            completed_steps = navigation_state.get("completed_steps", [])
+        elif hasattr(navigation_state, '__dataclass_fields__'):
+            completed_steps = getattr(navigation_state, "completed_steps", [])
+        
+        # Add operational_parameters as available if the current step is vehicle_parameters
+        if current_step == "vehicle_parameters":
+            available_steps.append("operational_parameters")
+        
+        # If operational_parameters is completed or current, make results available
+        if "operational_parameters" in completed_steps or current_step == "operational_parameters":
+            available_steps.append("results")
+        
+        # If we have results, add export step
+        if has_results or "results" in completed_steps or current_step == "results":
+            available_steps.append("export")
+    elif "results" in st.session_state and st.session_state.results is not None:
+        available_steps.append("results")
+        available_steps.append("export")
+    
+    return available_steps 

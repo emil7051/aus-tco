@@ -8,9 +8,12 @@ import streamlit as st
 from typing import Dict, Any, Optional, List
 import numpy as np
 import plotly.graph_objects as go
+import pandas as pd
 
 from tco_model.models import TCOOutput, ComparisonResult
+from tco_model.schemas import VehicleType
 from utils.helpers import format_currency, format_percentage
+from utils.ui_terminology import get_formatted_label
 from ui.results.charts import (
     create_cumulative_tco_chart,
     create_annual_costs_chart,
@@ -259,7 +262,6 @@ def render_financial_details(results: Dict[str, TCOOutput], comparison: Comparis
     }
     
     # Display as a dataframe
-    import pandas as pd
     st.dataframe(pd.DataFrame(financial_data), use_container_width=True)
 
 
@@ -406,7 +408,7 @@ def render_parameter_impact_view(results: Dict[str, TCOOutput], comparison: Comp
             
             with parameter_buttons[2]:
                 if st.button("Vehicle Efficiency"):
-                    parameter = "vehicle.energy_consumption.base_rate" if results["vehicle_1"].vehicle_type == "bet" else "vehicle.fuel_consumption.base_rate"
+                    parameter = "vehicle.energy_consumption.base_rate" if results["vehicle_1"].vehicle_type == VehicleType.BATTERY_ELECTRIC.value else "vehicle.fuel_consumption.base_rate"
                     st.session_state["parameter_to_analyse"] = parameter
                     show_parameter_impact(parameter, results, comparison)
         
@@ -707,13 +709,34 @@ def determine_has_tipping_point(sensitivity1: Dict[str, Any], sensitivity2: Dict
     for i in range(min_len):
         tco_diff.append(sensitivity1["tco_values"][i] - sensitivity2["tco_values"][i])
     
-    # Check if tco_diff changes sign (crosses zero)
-    sign_changes = 0
-    for i in range(1, len(tco_diff)):
-        if tco_diff[i-1] * tco_diff[i] <= 0:  # Zero or sign change
-            sign_changes += 1
+    # If any values have different signs and cross zero, there's a tipping point
+    has_positive = False
+    has_negative = False
     
-    return sign_changes > 0
+    for diff in tco_diff:
+        if diff > 0:
+            has_positive = True
+        elif diff < 0:
+            has_negative = True
+            
+    # If we have both positive and negative differences, there's a crossover
+    if has_positive and has_negative:
+        return True
+    
+    # Also check if the trend is strongly converging
+    if len(tco_diff) >= 2:
+        first_diff = tco_diff[0]
+        last_diff = tco_diff[-1]
+        
+        # If the differences have different signs, there's a crossover
+        if first_diff * last_diff < 0:
+            return True
+            
+        # If they're converging significantly toward zero
+        if abs(last_diff) < abs(first_diff) * 0.2:  # 80% reduction
+            return True
+    
+    return False
 
 
 def calculate_tipping_point(sensitivity1: Dict[str, Any], sensitivity2: Dict[str, Any]) -> Optional[float]:
@@ -839,4 +862,56 @@ def generate_sensitivity_insights(sensitivity1: Dict[str, Any], sensitivity2: Di
     else:
         insights.append(f"* No breakeven point was found - the {vehicle1_name if orig_tco2 > orig_tco1 else vehicle2_name} remains more cost-effective across all analyzed {parameter_name} values.")
     
-    return "\n".join(insights) 
+    return "\n".join(insights)
+
+
+def create_live_preview(scenario):
+    """
+    Create a compact live preview component for a single scenario.
+    
+    Args:
+        scenario: Scenario input data for preview
+        
+    Returns:
+        HTML string with preview component
+    """
+    from tco_model.calculator import TCOCalculator
+    from utils.helpers import format_currency
+    
+    # Calculate a quick preview using the TCO model
+    calculator = TCOCalculator()
+    result = calculator.calculate(scenario)
+    
+    # Format key metrics
+    total_tco = format_currency(result.total_tco)
+    lcod = format_currency(result.lcod)
+    
+    # Build a simple preview card
+    html = f"""
+    <div class="live-preview-card">
+        <h4>Quick Preview - {result.vehicle_name}</h4>
+        
+        <div class="preview-section">
+            <div class="metric">
+                <span class="metric-label">Total TCO:</span> 
+                <span class="metric-value">{total_tco}</span>
+            </div>
+            
+            <div class="metric">
+                <span class="metric-label">Cost per km:</span> 
+                <span class="metric-value">{lcod}/km</span>
+            </div>
+            
+            <div class="metric">
+                <span class="metric-label">Analysis Period:</span> 
+                <span class="metric-value">{result.analysis_period_years} years</span>
+            </div>
+        </div>
+        
+        <div class="preview-footer">
+            Note: This is a quick preview. Results may change with detailed calculation.
+        </div>
+    </div>
+    """
+    
+    return html 

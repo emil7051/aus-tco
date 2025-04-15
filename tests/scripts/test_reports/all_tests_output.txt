@@ -1,0 +1,6 @@
+============================= test session starts ==============================
+collecting ... /Users/edwardmiller/dev/aus-tco/venv/lib/python3.11/site-packages/coverage/inorout.py:525: CoverageWarning: Module tco_model was previously imported, but not measured (module-not-measured)
+  self.warn(msg, slug="module-not-measured")
+collected 0 items
+
+============================= 4 warnings in 1.65s ==============================

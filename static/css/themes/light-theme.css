@@ -3,6 +3,11 @@
    ========================================================================== */
 
 :root {
+  /* Standard theme variables for test compatibility */
+  --primary-color: #1E88E5;
+  --background-color: #ffffff;
+  --text-color: #333333;
+
   /* Base theme colors */
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;
@@ -11,6 +16,30 @@
   --text-secondary: #666666;
   --border-color: #dddddd;
   --divider-color: #eeeeee;
+  
+  /* Component colors for consistency */
+  --acquisition-color: #1E88E5;
+  --energy-color: #FF9800;
+  --maintenance-color: #4CAF50;
+  --infrastructure-color: #F44336;
+  --battery-color: #9C27B0;
+  --insurance-color: #E91E63;
+  --taxes-color: #FF5722;
+  --residual-color: #607D8B;
+  
+  /* Vehicle type colors */
+  --bet-primary: #26A69A;
+  --diesel-primary: #FB8C00;
+  
+  /* Australian themed colors */
+  --aus-green: #00843D;
+  --aus-gold: #FFCD00;
+  
+  /* Status colors */
+  --success-color: #4CAF50;
+  --warning-color: #FF9800;
+  --error-color: #F44336;
+  --info-color: #2196F3;
   
   /* Light theme specific RGB values for opacity usage */
   --bet-primary-rgb: 38, 166, 154;

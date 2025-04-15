@@ -2,6 +2,78 @@
 
 This guide explains how to work with the TCO model codebase following our standardized naming conventions and patterns.
 
+## Vehicle Type Standardization
+
+### Canonical Vehicle Type Enum
+
+The codebase uses a canonical `VehicleType` enum from `tco_model.schemas` for vehicle type identification:
+
+```python
+from tco_model.schemas import VehicleType
+
+# Use enum values directly
+electric_vehicle = VehicleType.BATTERY_ELECTRIC
+diesel_vehicle = VehicleType.DIESEL
+
+# For string comparisons, use .value
+if vehicle.type == VehicleType.BATTERY_ELECTRIC.value:
+    # Handle electric vehicle logic
+elif vehicle.type == VehicleType.DIESEL.value:
+    # Handle diesel vehicle logic
+```
+
+### Correct Usage Patterns
+
+✅ DO:
+- Import `VehicleType` from `tco_model.schemas`
+- Use `VehicleType.BATTERY_ELECTRIC` and `VehicleType.DIESEL` directly
+- Compare string values with `VehicleType.BATTERY_ELECTRIC.value` or `VehicleType.DIESEL.value`
+- Use the canonical values in database fields, API responses, and configuration files
+
+❌ DON'T:
+- Import `VehicleType` from `tco_model.models` (deprecated)
+- Use string literals like `"bet"`, `"ice"`, `"battery_electric"`, `"diesel"`
+- Use the `normalize_vehicle_type` function (deprecated)
+- Use `VehicleType.BET` or `VehicleType.ICE` aliases (deprecated)
+
+### CSS Class Mapping
+
+For backward compatibility, the codebase uses a mapping function to translate between canonical VehicleType enum values and CSS class names:
+
+```python
+def get_css_class_for_vehicle_type(vehicle_type: str) -> str:
+    """
+    Convert canonical vehicle type to CSS class name for backward compatibility.
+    
+    Args:
+        vehicle_type: Vehicle type (canonical value from VehicleType.value)
+        
+    Returns:
+        CSS class name (legacy format)
+    """
+    if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
+        return "bet"
+    elif vehicle_type == VehicleType.DIESEL.value:
+        return "diesel"
+    return vehicle_type  # Fallback to original value for other types
+```
+
+Use this function when creating UI components that need CSS classes:
+
+```python
+# Get canonical vehicle type
+vehicle_type = get_vehicle_type(state_prefix)  # Returns "battery_electric" or "diesel"
+
+# Get legacy CSS class name
+css_class = get_css_class_for_vehicle_type(vehicle_type)  # Returns "bet" or "diesel"
+
+# Use the CSS class in UI components
+with UIComponentFactory.create_card("Component Title", component_id, css_class):
+    # Component content
+```
+
+In a future release, the CSS classes will be updated to match the canonical enum values.
+
 ## Field Naming Conventions
 
 ### General Rules
@@ -147,4 +219,30 @@ When adding new cost components:
 2. Update the `total` properties to include the new component
 3. Add the component to the `UI_COMPONENT_KEYS` if it should be displayed in the UI
 4. Add appropriate entry to `UI_COMPONENT_MAPPING` with color and display order
-5. Update component tests to include the new component 
+5. Update component tests to include the new component
+
+### CSS Classes and Styling
+
+When working with vehicle-specific styling, the codebase currently uses CSS classes with legacy naming 
+like `.vehicle-bet` and `.vehicle-diesel`. These will be updated in a future release to match the canonical 
+enum values (`.vehicle-battery_electric` and `.vehicle-diesel`).
+
+For now, continue using the existing CSS class naming patterns until a full CSS refactoring is performed:
+
+```python
+# Current pattern for UI components
+if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
+    # Still use "bet" for CSS classes
+    with UIComponentFactory.create_card("Battery Parameters", card_id, "bet"):
+        # Component content
+else:
+    # Use "diesel" for CSS classes
+    with UIComponentFactory.create_card("Engine Parameters", card_id, "diesel"):
+        # Component content
+```
+
+> **Note:** The VehicleType standardization project has been completed. All code now uses the canonical VehicleType enum from tco_model.schemas. The following section is kept for historical reference only.
+
+**Legacy approach (deprecated and removed):**
+- Import `VehicleType` from `tco_model.models` (deprecated)
+- Use `VehicleType.BET` or `VehicleType.ICE` aliases (deprecated) 

@@ -6,7 +6,7 @@ including discount rates, inflation, energy prices, and carbon tax.
 """
 
 import streamlit as st
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from tco_model.models import ElectricityRateType, DieselPriceScenario
 from utils.helpers import (
@@ -18,6 +18,7 @@ from utils.helpers import (
 )
 from utils.ui_components import UIComponentFactory
 from ui.inputs.parameter_helpers import render_parameter_with_impact
+from tco_model.schemas import VehicleType
 
 
 # Constants for state keys
@@ -131,7 +132,7 @@ def render_economic_parameters(vehicle_number: int, state_prefix: str, vehicle_t
                                       f"v{vehicle_number}_energy", 
                                       vehicle_type):
         # Energy price parameters based on vehicle type
-        if vehicle_type == "bet":
+        if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
             # Electricity prices for BET
             electricity_price = render_parameter_with_impact(
                 "Electricity Price ($/kWh)",

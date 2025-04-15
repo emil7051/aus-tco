@@ -1,0 +1,252 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.9, pytest-8.3.5, pluggy-1.5.0 -- /Users/edwardmiller/dev/aus-tco/venv/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/edwardmiller/dev/aus-tco
+configfile: pytest.ini
+plugins: cov-6.1.1
+collecting ... collected 12 items
+
+tests/unit/test_results_visualization.py::TestDashboardComponents::test_cost_breakdown_chart FAILED [  8%]
+tests/unit/test_results_visualization.py::TestDashboardComponents::test_cumulative_cost_chart FAILED [ 16%]
+tests/unit/test_results_visualization.py::TestDashboardComponents::test_lcod_comparison_chart FAILED [ 25%]
+tests/unit/test_results_visualization.py::TestEnvironmentalVisualization::test_emissions_timeline_chart FAILED [ 33%]
+tests/unit/test_results_visualization.py::TestEnvironmentalVisualization::test_environmental_equivalence_chart FAILED [ 41%]
+tests/unit/test_results_visualization.py::TestEnvironmentalVisualization::test_emissions_per_km_chart FAILED [ 50%]
+tests/unit/test_results_visualization.py::TestInvestmentAnalysisVisualizations::test_payback_period_chart FAILED [ 58%]
+tests/unit/test_results_visualization.py::TestInvestmentAnalysisVisualizations::test_roi_visualization FAILED [ 66%]
+tests/unit/test_results_visualization.py::TestSideBySideLayout::test_create_comparison_view FAILED [ 75%]
+tests/unit/test_results_visualization.py::TestSideBySideLayout::test_live_preview_component FAILED [ 83%]
+tests/unit/test_results_visualization.py::TestResultsExport::test_excel_export_customization FAILED [ 91%]
+tests/unit/test_results_visualization.py::TestResultsExport::test_chart_image_export FAILED [100%]
+
+=================================== FAILURES ===================================
+______________ TestDashboardComponents.test_cost_breakdown_chart _______________
+
+self = <tests.unit.test_results_visualization.TestDashboardComponents object at 0x11db570d0>
+bet_scenario = ScenarioInput(scenario_name='BET Test Scenario', vehicle=BETParameters(name='Example BET', type=<VehicleType.BATTERY_E...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+diesel_scenario = ScenarioInput(scenario_name='Diesel Test Scenario', vehicle=DieselParameters(name='Example Diesel Truck', type=<Vehicl...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+
+    def test_cost_breakdown_chart(self, bet_scenario, diesel_scenario):
+        """Test cost breakdown chart creation."""
+>       from ui.results.cost_breakdown import create_cost_breakdown_chart
+E       ModuleNotFoundError: No module named 'ui.results.cost_breakdown'
+
+tests/unit/test_results_visualization.py:18: ModuleNotFoundError
+______________ TestDashboardComponents.test_cumulative_cost_chart ______________
+
+self = <tests.unit.test_results_visualization.TestDashboardComponents object at 0x11dbb4850>
+bet_scenario = ScenarioInput(scenario_name='BET Test Scenario', vehicle=BETParameters(name='Example BET', type=<VehicleType.BATTERY_E...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+diesel_scenario = ScenarioInput(scenario_name='Diesel Test Scenario', vehicle=DieselParameters(name='Example Diesel Truck', type=<Vehicl...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+
+    def test_cumulative_cost_chart(self, bet_scenario, diesel_scenario):
+        """Test cumulative cost chart creation."""
+        from ui.results.dashboard import create_cumulative_tco_chart
+    
+        # Calculate TCO
+        calculator = TCOCalculator()
+        bet_result = calculator.calculate(bet_scenario)
+        diesel_result = calculator.calculate(diesel_scenario)
+    
+        # Create chart comparing both vehicles
+        chart = create_cumulative_tco_chart(bet_result, diesel_result)
+    
+        # Validate chart structure
+>       assert isinstance(chart, dict)
+E       AssertionError: assert False
+E        +  where False = isinstance(Figure({\n    'data': [{'line': {'color': '#26A69A', 'width': 3},\n              'mode': 'lines+markers',\n              'name': 'Example BET',\n              'type': 'scatter',\n              'x': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],\n              'y': {'bdata': ('EjgtyvAGE0EHqeh3Ts4fQXApmYQAOS' ... 'd17bVAPkGo+DcdZAlAQSJGP1ZZXEBB'),\n                    'dtype': 'f8'}},\n             {'line': {'color': '#FB8C00', 'width': 3},\n              'mode': 'lines+markers',\n              'name': 'Example Diesel Truck',\n              'type': 'scatter',\n              'x': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],\n              'y': {'bdata': ('YoFrBEM/XEHdlRmceiVsQQh2ySapHH' ... 'E2aJMzl0GmSfSUUgyZQfpJZn+r5JpB'),\n                    'dtype': 'f8'}}],\n    'layout': {'height': 500,\n               'hovermode': 'x unified',\n               'legend': {'orientation': 'h', 'x': 1, 'xanchor': 'right', 'y': 1.02, 'yanchor': 'bottom'},\n               'margin': {'b': 20, 'l': 20, 'r': 20, 't': 30},\n               'template': '...',\n               'xaxis': {'title': {'text': 'Year'}},\n               'yaxis': {'title': {'text': 'Cumulative Cost ($)'}}}\n}), dict)
+
+tests/unit/test_results_visualization.py:59: AssertionError
+______________ TestDashboardComponents.test_lcod_comparison_chart ______________
+
+self = <tests.unit.test_results_visualization.TestDashboardComponents object at 0x11dbb4f50>
+bet_scenario = ScenarioInput(scenario_name='BET Test Scenario', vehicle=BETParameters(name='Example BET', type=<VehicleType.BATTERY_E...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+diesel_scenario = ScenarioInput(scenario_name='Diesel Test Scenario', vehicle=DieselParameters(name='Example Diesel Truck', type=<Vehicl...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+
+    def test_lcod_comparison_chart(self, bet_scenario, diesel_scenario):
+        """Test LCOD comparison chart creation."""
+>       from ui.results.dashboard import create_lcod_comparison_chart
+E       ImportError: cannot import name 'create_lcod_comparison_chart' from 'ui.results.dashboard' (/Users/edwardmiller/dev/aus-tco/ui/results/dashboard.py)
+
+tests/unit/test_results_visualization.py:77: ImportError
+_________ TestEnvironmentalVisualization.test_emissions_timeline_chart _________
+
+self = <tests.unit.test_results_visualization.TestEnvironmentalVisualization object at 0x11dbb56d0>
+emissions_comparison_data = {'lifetime_distance': 1500000.0, 'vehicle_1': EmissionsData(annual_co2_tonnes=[120.0, 120.0, 120.0, 120.0, 120.0, 120....gy_per_km=350.0, co2_per_km=93800.0, trees_equivalent=6331500, homes_equivalent=16884.0, cars_equivalent=30954.0), ...}
+
+    def test_emissions_timeline_chart(self, emissions_comparison_data):
+        """Test emissions timeline chart creation."""
+        from ui.results.environmental import create_emissions_timeline_chart
+    
+        # Create chart using the emissions data
+>       chart = create_emissions_timeline_chart(
+            emissions_comparison_data["vehicle_1"],
+            emissions_comparison_data["vehicle_2"],
+            emissions_comparison_data["vehicle_1_name"],
+            emissions_comparison_data["vehicle_2_name"]
+        )
+E       TypeError: create_emissions_timeline_chart() takes 2 positional arguments but 4 were given
+
+tests/unit/test_results_visualization.py:110: TypeError
+_____ TestEnvironmentalVisualization.test_environmental_equivalence_chart ______
+
+self = <tests.unit.test_results_visualization.TestEnvironmentalVisualization object at 0x11dbb5d90>
+emissions_comparison_data = {'lifetime_distance': 1500000.0, 'vehicle_1': EmissionsData(annual_co2_tonnes=[120.0, 120.0, 120.0, 120.0, 120.0, 120....gy_per_km=350.0, co2_per_km=93800.0, trees_equivalent=6331500, homes_equivalent=16884.0, cars_equivalent=30954.0), ...}
+
+    def test_environmental_equivalence_chart(self, emissions_comparison_data):
+        """Test environmental equivalence chart creation."""
+>       from ui.results.environmental import create_environmental_equivalence_chart
+E       ImportError: cannot import name 'create_environmental_equivalence_chart' from 'ui.results.environmental' (/Users/edwardmiller/dev/aus-tco/ui/results/environmental.py)
+
+tests/unit/test_results_visualization.py:134: ImportError
+__________ TestEnvironmentalVisualization.test_emissions_per_km_chart __________
+
+self = <tests.unit.test_results_visualization.TestEnvironmentalVisualization object at 0x11dbb6490>
+emissions_comparison_data = {'lifetime_distance': 1500000.0, 'vehicle_1': EmissionsData(annual_co2_tonnes=[120.0, 120.0, 120.0, 120.0, 120.0, 120....gy_per_km=350.0, co2_per_km=93800.0, trees_equivalent=6331500, homes_equivalent=16884.0, cars_equivalent=30954.0), ...}
+
+    def test_emissions_per_km_chart(self, emissions_comparison_data):
+        """Test emissions per km chart creation."""
+>       from ui.results.environmental import create_emissions_per_km_chart
+E       ImportError: cannot import name 'create_emissions_per_km_chart' from 'ui.results.environmental' (/Users/edwardmiller/dev/aus-tco/ui/results/environmental.py)
+
+tests/unit/test_results_visualization.py:157: ImportError
+________ TestInvestmentAnalysisVisualizations.test_payback_period_chart ________
+
+self = <tests.unit.test_results_visualization.TestInvestmentAnalysisVisualizations object at 0x11dbb6cd0>
+investment_analysis_data = {'investment_analysis': InvestmentAnalysis(payback_years=None, roi=None, npv_difference=69568089.56376031, irr=nan, ha...yback=False), 'vehicle_1_initial_cost': 500000, 'vehicle_1_name': 'Example BET', 'vehicle_2_initial_cost': 300000, ...}
+
+    def test_payback_period_chart(self, investment_analysis_data):
+        """Test payback period chart creation."""
+>       from ui.results.metrics import create_payback_period_chart
+E       ImportError: cannot import name 'create_payback_period_chart' from 'ui.results.metrics' (/Users/edwardmiller/dev/aus-tco/ui/results/metrics.py)
+
+tests/unit/test_results_visualization.py:186: ImportError
+_________ TestInvestmentAnalysisVisualizations.test_roi_visualization __________
+
+self = <tests.unit.test_results_visualization.TestInvestmentAnalysisVisualizations object at 0x11dbb7390>
+investment_analysis_data = {'investment_analysis': InvestmentAnalysis(payback_years=None, roi=None, npv_difference=69568089.56376031, irr=nan, ha...yback=False), 'vehicle_1_initial_cost': 500000, 'vehicle_1_name': 'Example BET', 'vehicle_2_initial_cost': 300000, ...}
+
+    def test_roi_visualization(self, investment_analysis_data):
+        """Test ROI visualization creation."""
+>       from ui.results.metrics import create_roi_visualization
+E       ImportError: cannot import name 'create_roi_visualization' from 'ui.results.metrics' (/Users/edwardmiller/dev/aus-tco/ui/results/metrics.py)
+
+tests/unit/test_results_visualization.py:213: ImportError
+_______________ TestSideBySideLayout.test_create_comparison_view _______________
+
+self = <tests.unit.test_results_visualization.TestSideBySideLayout object at 0x11dbb7c50>
+bet_scenario = ScenarioInput(scenario_name='BET Test Scenario', vehicle=BETParameters(name='Example BET', type=<VehicleType.BATTERY_E...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+diesel_scenario = ScenarioInput(scenario_name='Diesel Test Scenario', vehicle=DieselParameters(name='Example Diesel Truck', type=<Vehicl...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+
+    def test_create_comparison_view(self, bet_scenario, diesel_scenario):
+        """Test creating side-by-side comparison view."""
+>       from ui.layout import create_side_by_side_comparison
+E       ImportError: cannot import name 'create_side_by_side_comparison' from 'ui.layout' (/Users/edwardmiller/dev/aus-tco/ui/layout.py)
+
+tests/unit/test_results_visualization.py:238: ImportError
+_______________ TestSideBySideLayout.test_live_preview_component _______________
+
+self = <tests.unit.test_results_visualization.TestSideBySideLayout object at 0x11dbb8390>
+bet_scenario = ScenarioInput(scenario_name='BET Test Scenario', vehicle=BETParameters(name='Example BET', type=<VehicleType.BATTERY_E...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+
+    def test_live_preview_component(self, bet_scenario):
+        """Test live preview component."""
+>       from ui.results.live_preview import create_live_preview
+E       ImportError: cannot import name 'create_live_preview' from 'ui.results.live_preview' (/Users/edwardmiller/dev/aus-tco/ui/results/live_preview.py)
+
+tests/unit/test_results_visualization.py:258: ImportError
+______________ TestResultsExport.test_excel_export_customization _______________
+
+self = <tests.unit.test_results_visualization.TestResultsExport object at 0x11dbb5510>
+bet_scenario = ScenarioInput(scenario_name='BET Test Scenario', vehicle=BETParameters(name='Example BET', type=<VehicleType.BATTERY_E...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+diesel_scenario = ScenarioInput(scenario_name='Diesel Test Scenario', vehicle=DieselParameters(name='Example Diesel Truck', type=<Vehicl...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+
+    def test_excel_export_customization(self, bet_scenario, diesel_scenario):
+        """Test Excel export customization options."""
+        from ui.results.utils import generate_results_export
+    
+        # Calculate TCO
+        calculator = TCOCalculator()
+        bet_result = calculator.calculate(bet_scenario)
+        diesel_result = calculator.calculate(diesel_scenario)
+    
+        # Compare results
+        comparison = calculator.compare(bet_result, diesel_result)
+    
+        # Create results dictionary
+        results = {
+            "vehicle_1": bet_result,
+            "vehicle_2": diesel_result
+        }
+    
+        # Generate export with custom options
+>       export_with_emissions = generate_results_export(
+            results,
+            comparison,
+            include_emissions=True,
+            include_charts=True
+        )
+E       TypeError: generate_results_export() got an unexpected keyword argument 'include_emissions'
+
+tests/unit/test_results_visualization.py:290: TypeError
+__________________ TestResultsExport.test_chart_image_export ___________________
+
+self = <tests.unit.test_results_visualization.TestResultsExport object at 0x11dbb8790>
+bet_scenario = ScenarioInput(scenario_name='BET Test Scenario', vehicle=BETParameters(name='Example BET', type=<VehicleType.BATTERY_E...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+diesel_scenario = ScenarioInput(scenario_name='Diesel Test Scenario', vehicle=DieselParameters(name='Example Diesel Truck', type=<Vehicl...n'>, loan_term_years=5, loan_interest_rate=0.07, down_payment_percentage=0.2), created_date=datetime.date(2025, 4, 14))
+
+    def test_chart_image_export(self, bet_scenario, diesel_scenario):
+        """Test chart image export functionality."""
+>       from ui.results.utils import export_chart_as_image
+E       ImportError: cannot import name 'export_chart_as_image' from 'ui.results.utils' (/Users/edwardmiller/dev/aus-tco/ui/results/utils.py)
+
+tests/unit/test_results_visualization.py:309: ImportError
+=============================== warnings summary ===============================
+tco_model/schemas.py:70
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:70: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('min_rate', 'max_rate')
+
+tco_model/schemas.py:118
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:118: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('major_service_interval_km')
+
+tco_model/schemas.py:131
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:131: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('year_5', 'year_10', 'year_15')
+
+tco_model/schemas.py:165
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:165: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('min_rate', 'max_rate')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.11.9-final-0 _______________
+
+Name                       Stmts   Miss  Cover   Missing
+--------------------------------------------------------
+tco_model/__init__.py          1      0   100%
+tco_model/calculator.py      239     85    64%   319, 324, 365, 382-397, 420-424, 430-431, 437, 465, 490-493, 527-579, 594-653, 676-697, 730
+tco_model/costs.py           156    124    21%   27-31, 49-69, 90-155, 178-215, 233-261, 279-308, 332-368, 400, 412, 450-487
+tco_model/models.py          503    117    77%   97-99, 104-107, 116-164, 179, 183-184, 188, 221-224, 249, 251, 255, 282, 284, 302-307, 327, 333-338, 360, 365, 369, 396, 441, 448, 460-462, 480, 488-498, 527, 544-550, 587-589, 647, 652, 657, 662, 667, 672, 677, 682, 687, 692, 698, 703, 722, 739, 744, 785, 798, 803, 808, 813, 839-857, 867-871
+tco_model/schemas.py         122     12    90%   72-74, 120-122, 133-135, 167-169
+tco_model/strategies.py      361     66    82%   39, 51, 72, 86, 124, 167, 199, 240, 245, 290, 328, 364-381, 395, 399, 404, 433, 445, 538, 584, 630, 642, 676, 716, 757, 824, 836, 866, 873-883, 917, 922, 945, 957, 986, 1028-1036, 1057, 1069, 1145, 1185, 1221, 1233, 1337, 1346-1360
+tco_model/terminology.py     124     71    43%   604, 619, 631, 643-645, 670-704, 717, 730, 743-749, 763-767, 780-783, 797-815, 830-860
+tco_model/vehicles.py        113    113     0%   8-330
+--------------------------------------------------------
+TOTAL                       1619    588    64%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/unit/test_results_visualization.py::TestDashboardComponents::test_cost_breakdown_chart - ModuleNotFoundError: No module named 'ui.results.cost_breakdown'
+FAILED tests/unit/test_results_visualization.py::TestDashboardComponents::test_cumulative_cost_chart - AssertionError: assert False
+ +  where False = isinstance(Figure({\n    'data': [{'line': {'color': '#26A69A', 'width': 3},\n              'mode': 'lines+markers',\n              'name': 'Example BET',\n              'type': 'scatter',\n              'x': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],\n              'y': {'bdata': ('EjgtyvAGE0EHqeh3Ts4fQXApmYQAOS' ... 'd17bVAPkGo+DcdZAlAQSJGP1ZZXEBB'),\n                    'dtype': 'f8'}},\n             {'line': {'color': '#FB8C00', 'width': 3},\n              'mode': 'lines+markers',\n              'name': 'Example Diesel Truck',\n              'type': 'scatter',\n              'x': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],\n              'y': {'bdata': ('YoFrBEM/XEHdlRmceiVsQQh2ySapHH' ... 'E2aJMzl0GmSfSUUgyZQfpJZn+r5JpB'),\n                    'dtype': 'f8'}}],\n    'layout': {'height': 500,\n               'hovermode': 'x unified',\n               'legend': {'orientation': 'h', 'x': 1, 'xanchor': 'right', 'y': 1.02, 'yanchor': 'bottom'},\n               'margin': {'b': 20, 'l': 20, 'r': 20, 't': 30},\n               'template': '...',\n               'xaxis': {'title': {'text': 'Year'}},\n               'yaxis': {'title': {'text': 'Cumulative Cost ($)'}}}\n}), dict)
+FAILED tests/unit/test_results_visualization.py::TestDashboardComponents::test_lcod_comparison_chart - ImportError: cannot import name 'create_lcod_comparison_chart' from 'ui.results.dashboard' (/Users/edwardmiller/dev/aus-tco/ui/results/dashboard.py)
+FAILED tests/unit/test_results_visualization.py::TestEnvironmentalVisualization::test_emissions_timeline_chart - TypeError: create_emissions_timeline_chart() takes 2 positional arguments but 4 were given
+FAILED tests/unit/test_results_visualization.py::TestEnvironmentalVisualization::test_environmental_equivalence_chart - ImportError: cannot import name 'create_environmental_equivalence_chart' from 'ui.results.environmental' (/Users/edwardmiller/dev/aus-tco/ui/results/environmental.py)
+FAILED tests/unit/test_results_visualization.py::TestEnvironmentalVisualization::test_emissions_per_km_chart - ImportError: cannot import name 'create_emissions_per_km_chart' from 'ui.results.environmental' (/Users/edwardmiller/dev/aus-tco/ui/results/environmental.py)
+FAILED tests/unit/test_results_visualization.py::TestInvestmentAnalysisVisualizations::test_payback_period_chart - ImportError: cannot import name 'create_payback_period_chart' from 'ui.results.metrics' (/Users/edwardmiller/dev/aus-tco/ui/results/metrics.py)
+FAILED tests/unit/test_results_visualization.py::TestInvestmentAnalysisVisualizations::test_roi_visualization - ImportError: cannot import name 'create_roi_visualization' from 'ui.results.metrics' (/Users/edwardmiller/dev/aus-tco/ui/results/metrics.py)
+FAILED tests/unit/test_results_visualization.py::TestSideBySideLayout::test_create_comparison_view - ImportError: cannot import name 'create_side_by_side_comparison' from 'ui.layout' (/Users/edwardmiller/dev/aus-tco/ui/layout.py)
+FAILED tests/unit/test_results_visualization.py::TestSideBySideLayout::test_live_preview_component - ImportError: cannot import name 'create_live_preview' from 'ui.results.live_preview' (/Users/edwardmiller/dev/aus-tco/ui/results/live_preview.py)
+FAILED tests/unit/test_results_visualization.py::TestResultsExport::test_excel_export_customization - TypeError: generate_results_export() got an unexpected keyword argument 'include_emissions'
+FAILED tests/unit/test_results_visualization.py::TestResultsExport::test_chart_image_export - ImportError: cannot import name 'export_chart_as_image' from 'ui.results.utils' (/Users/edwardmiller/dev/aus-tco/ui/results/utils.py)
+======================== 12 failed, 4 warnings in 0.80s ========================

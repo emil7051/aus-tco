@@ -12,6 +12,27 @@ from enum import Enum
 # Type variables for generic functions
 T = TypeVar('T')
 
+# Canonical Vehicle Type Enum
+# 
+# The canonical representation of vehicle types is through the VehicleType enum
+# from tco_model.schemas. Always import VehicleType from schemas, not models:
+#
+# ```python
+# # Correct usage:
+# from tco_model.schemas import VehicleType
+# 
+# # Enum values:
+# VehicleType.BATTERY_ELECTRIC  # Electric vehicle
+# VehicleType.DIESEL            # Diesel vehicle
+# 
+# # String comparisons:
+# if vehicle.type == VehicleType.BATTERY_ELECTRIC.value:
+#     # Handle electric vehicle logic
+# ```
+#
+# Do not use string literals like "bet", "ice", "battery_electric" or "diesel".
+# The BET and ICE abbreviations are being phased out in favor of the full terms.
+
 # Core Terminology
 
 #: Total Cost of Ownership - The comprehensive sum of all costs associated
@@ -79,11 +100,11 @@ UI_COMPONENT_KEYS: List[str] = [
 UI_COMPONENT_LABELS: Dict[str, str] = {
     "acquisition": "Acquisition Costs",
     "energy": "Energy Costs",
-    "maintenance": "Maintenance & Repair",
+    "maintenance": "Maintenance, Tyres & Repair",
     "infrastructure": "Infrastructure",
     "battery_replacement": "Battery Replacement",
     "insurance_registration": "Insurance & Registration",
-    "taxes_levies": "Taxes & Levies",
+    "taxes_levies": "Taxes & Levies for Organisations",
     "residual_value": "Residual Value"
 }
 

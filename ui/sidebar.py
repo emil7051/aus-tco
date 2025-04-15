@@ -10,12 +10,12 @@ from typing import Dict, Any, Optional, List, Callable
 import streamlit as st
 import datetime
 
-from tco_model.models import VehicleType
+from tco_model.schemas import VehicleType
 from utils.helpers import load_default_scenario, find_available_vehicle_configs, format_currency, format_percentage
 from utils.ui_terminology import get_formatted_label, get_vehicle_type_color
 from utils.ui_components import UIComponentFactory
 from utils.css_loader import get_available_themes, load_css
-from utils.navigation_state import get_current_page, navigate_to
+from utils.navigation_state import get_current_step, set_step
 from tco_model.terminology import UI_COMPONENT_KEYS, UI_COMPONENT_LABELS
 from tco_model.models import TCOOutput, ComparisonResult
 from ui.results.utils import get_component_value
@@ -76,39 +76,41 @@ def render_navigation() -> None:
     """
     st.subheader("Navigation")
     
-    # Current page
-    current_page = get_current_page()
+    # Current step
+    current_step = get_current_step()
     
     # Create navigation buttons
     col1, col2 = st.columns(2)
     
     with col1:
-        inputs_selected = current_page == "inputs"
+        inputs_selected = current_step == "config"
         if st.button("Inputs", use_container_width=True, 
                     type="primary" if inputs_selected else "secondary"):
-            navigate_to("inputs")
+            set_step("config")
     
     with col2:
-        results_selected = current_page == "results"
+        results_selected = current_step == "results"
         if st.button("Results", use_container_width=True,
                     type="primary" if results_selected else "secondary",
                     disabled=not st.session_state.get("show_results", False)):
-            navigate_to("results")
+            set_step("results")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        comparison_selected = current_page == "parameter_comparison"
+        # Note: parameter_comparison was likely intended to be a separate step
+        # but isn't in APP_STEPS. Using config as the closest match.
+        comparison_selected = False
         if st.button("Parameters", use_container_width=True,
                     type="primary" if comparison_selected else "secondary",
                     help="Compare parameters between vehicles"):
-            navigate_to("parameter_comparison")
+            set_step("config")
     
     with col2:
-        guide_selected = current_page == "guide"
+        guide_selected = current_step == "guide"
         if st.button("Guide", use_container_width=True,
                     type="primary" if guide_selected else "secondary"):
-            navigate_to("guide")
+            set_step("guide")
 
 
 def render_vehicle_config_selector() -> None:
@@ -168,7 +170,7 @@ def _render_vehicle_selector(
         type_configs = available_configs.get(current_type, [])
         
         # Get the selected config name (or default to the first one)
-        default_config_name = f"default_{'bet' if current_type == VehicleType.BATTERY_ELECTRIC else 'ice'}"
+        default_config_name = f"default_{current_type.value}"
         
         # Display a selectbox for available configurations
         with col2:

@@ -7,7 +7,8 @@ operational characteristics with improved visual hierarchy.
 """
 
 import streamlit as st
-from typing import Dict, Any, Optional
+import numpy as np
+from typing import Dict, Any, List, Optional, Tuple
 
 from utils.helpers import (
     get_safe_state_value, 
@@ -16,7 +17,9 @@ from utils.helpers import (
     format_currency
 )
 from utils.ui_components import UIComponentFactory
-from ui.inputs.parameter_helpers import render_parameter_with_impact
+from utils.ui_terminology import get_formatted_label, create_impact_indicator
+from tco_model.schemas import VehicleType
+from ui.inputs.parameter_helpers import render_parameter_with_impact, render_vehicle_header
 
 
 # Constants for state keys
@@ -290,7 +293,7 @@ def render_operational_parameters(vehicle_number: int, state_prefix: str, vehicl
             )
         
         # Show estimated annual consumption
-        if vehicle_type == "bet":
+        if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
             energy_rate = get_safe_state_value(f"{state_prefix}.vehicle.energy_consumption.base_rate", 1.45)
             annual_energy = annual_distance * energy_rate
             

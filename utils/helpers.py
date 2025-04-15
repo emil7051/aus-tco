@@ -310,11 +310,11 @@ def load_vehicle_parameters(vehicle_type: VehicleType, config_path: Optional[str
     """
     if vehicle_type == VehicleType.BATTERY_ELECTRIC:
         # Use the provided path or default BET path
-        file_path = config_path or os.path.join(settings.vehicles_config_path, "bet", "default_bet.yaml")
+        file_path = config_path or os.path.join(settings.vehicles_config_path, VehicleType.BATTERY_ELECTRIC.value, f"default_{VehicleType.BATTERY_ELECTRIC.value}.yaml")
         return load_bet_parameters(file_path)
     else:
         # Use the provided path or default diesel path
-        file_path = config_path or os.path.join(settings.vehicles_config_path, "diesel", "default_ice.yaml")
+        file_path = config_path or os.path.join(settings.vehicles_config_path, VehicleType.DIESEL.value, f"default_{VehicleType.DIESEL.value}.yaml")
         return load_diesel_parameters(file_path)
 
 
@@ -540,14 +540,10 @@ def load_default_scenario(vehicle_config_name: str) -> ScenarioInput:
         ScenarioInput model with default values
     """
     # Determine vehicle type from config name
-    if "bet" in vehicle_config_name.lower():
-        vehicle_type = VehicleType.BATTERY_ELECTRIC
-        # Always use the bet subdirectory
-        vehicle_path = os.path.join(settings.vehicles_config_path, "bet", f"{vehicle_config_name}.yaml")
-    else:
-        vehicle_type = VehicleType.DIESEL
-        # Always use the diesel subdirectory
-        vehicle_path = os.path.join(settings.vehicles_config_path, "diesel", f"{vehicle_config_name}.yaml")
+    vehicle_type = VehicleType.BATTERY_ELECTRIC if VehicleType.BATTERY_ELECTRIC.value in vehicle_config_name.lower() else VehicleType.DIESEL
+    
+    # Use the vehicle type's value for the subdirectory
+    vehicle_path = os.path.join(settings.vehicles_config_path, vehicle_type.value, f"{vehicle_config_name}.yaml")
     
     # Load parameters
     vehicle = load_vehicle_parameters(vehicle_type, vehicle_path)
@@ -580,12 +576,11 @@ def find_available_vehicle_configs() -> Dict[VehicleType, List[str]]:
     
     vehicles_dir = settings.vehicles_config_path
     
-    # Look only in subdirectories, not the main directory
-    for search_path in [
-        os.path.join(vehicles_dir, "bet", "*.yaml"),    # BET subdirectory
-        os.path.join(vehicles_dir, "diesel", "*.yaml")  # Diesel subdirectory
-    ]:
-        # Find all YAML files in the vehicles directory
+    # Look in canonical subdirectories
+    for vehicle_type in result.keys():
+        search_path = os.path.join(vehicles_dir, vehicle_type.value, "*.yaml")
+        
+        # Find all YAML files in the vehicle type directory
         for file_path in glob.glob(search_path):
             try:
                 # Get just the filename without extension
@@ -599,9 +594,9 @@ def find_available_vehicle_configs() -> Dict[VehicleType, List[str]]:
                 vehicle_type_str = vehicle_info.get('type', '').lower()
                 
                 # Map to the appropriate VehicleType and add to result
-                if vehicle_type_str == 'battery_electric':
+                if vehicle_type_str == VehicleType.BATTERY_ELECTRIC.value:
                     result[VehicleType.BATTERY_ELECTRIC].append(filename)
-                elif vehicle_type_str == 'diesel':
+                elif vehicle_type_str == VehicleType.DIESEL.value:
                     result[VehicleType.DIESEL].append(filename)
                 
             except Exception as e:
@@ -1088,30 +1083,45 @@ def format_currency(value: float, include_cents: bool = False) -> str:
 
 def format_percentage(value: float, decimal_places: int = 1) -> str:
     """
-    Format a value as a percentage.
+    Format a numeric value as a percentage with the specified decimal places.
     
     Args:
-        value: The value to format as percentage
+        value: Float value to format
         decimal_places: Number of decimal places to include
         
     Returns:
-        A formatted percentage string
+        Formatted percentage string
     """
-    format_str = "{:." + str(decimal_places) + "f}%"
-    return format_str.format(value)
+    format_string = f"{{:.{decimal_places}f}}%"
+    return format_string.format(value)
+
+
+def format_number(value: float, decimal_places: int = 1) -> str:
+    """
+    Format a numeric value with the specified decimal places and thousands separators.
+    
+    Args:
+        value: Float value to format
+        decimal_places: Number of decimal places to include
+        
+    Returns:
+        Formatted number string with thousands separators
+    """
+    format_string = f"{{:,.{decimal_places}f}}"
+    return format_string.format(value)
 
 
 def get_vehicle_type_label(vehicle_type: str) -> str:
     """
-    Get the user-friendly label for a vehicle type.
+    Get the display label for a vehicle type.
     
     Args:
-        vehicle_type: The vehicle type identifier
+        vehicle_type: Vehicle type code
         
     Returns:
-        The user-friendly label
+        Display label for the vehicle type
     """
-    return VEHICLE_TYPE_LABELS.get(vehicle_type, vehicle_type.replace('_', ' ').title())
+    return VEHICLE_TYPE_LABELS.get(vehicle_type, vehicle_type.replace("_", " ").title())
 
 
 def handle_vehicle_switch(old_type: str, new_type: str, vehicle_number: int) -> None:

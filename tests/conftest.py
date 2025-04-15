@@ -37,6 +37,142 @@ from tco_model.models import (
     ChargingStrategy,
 )
 
+# New imports for UI testing
+from utils.ui_terminology import UI_COMPONENT_LABELS
+from utils.navigation_state import get_current_step, set_step, get_navigation_history
+from ui.layout import LayoutMode
+from dataclasses import dataclass
+from typing import List, Optional
+
+# Define the NavigationState class that was missing
+@dataclass
+class NavigationState:
+    """Navigation state for testing purposes."""
+    current_step: str
+    completed_steps: List[str]
+    breadcrumb_history: List[str]
+    can_proceed: bool
+    can_go_back: bool
+    next_step: Optional[str]
+    previous_step: Optional[str]
+
+# New UI Fixtures for testing the refactored components
+
+@pytest.fixture
+def ui_theme_config():
+    """
+    Fixture providing theme configuration for UI tests.
+    """
+    return {
+        "current_theme": "default",
+        "high_contrast": False,
+        "available_themes": ["default", "high_contrast", "dark"]
+    }
+
+@pytest.fixture
+def navigation_state():
+    """
+    Fixture providing a navigation state for UI navigation tests.
+    """
+    return NavigationState(
+        current_step="vehicle_parameters",
+        completed_steps=["introduction", "vehicle_parameters"],
+        breadcrumb_history=["Home", "Vehicle Parameters"],
+        can_proceed=True,
+        can_go_back=True,
+        next_step="operational_parameters",
+        previous_step="introduction"
+    )
+
+@pytest.fixture
+def layout_config():
+    """
+    Fixture providing layout configuration for UI tests.
+    """
+    return {
+        "mode": LayoutMode.STEP_BY_STEP,
+        "sidebar_visible": True,
+        "sidebar_collapsed": False,
+        "results_preview_enabled": True
+    }
+
+@pytest.fixture
+def component_test_ids():
+    """
+    Fixture providing test IDs for UI component tests.
+    """
+    return {
+        "navigation": "nav-container",
+        "sidebar": "sidebar-container",
+        "main_content": "main-content",
+        "vehicle_form": "vehicle-form",
+        "operational_form": "operational-form",
+        "economic_form": "economic-form",
+        "results_container": "results-container",
+        "theme_switcher": "theme-switcher"
+    }
+
+@pytest.fixture
+def emissions_comparison_data(bet_scenario, diesel_scenario):
+    """
+    Fixture providing emissions comparison data for UI tests.
+    """
+    # Calculate TCO
+    from tco_model.calculator import TCOCalculator
+    calculator = TCOCalculator()
+    
+    bet_result = calculator.calculate(bet_scenario)
+    diesel_result = calculator.calculate(diesel_scenario)
+    
+    return {
+        "vehicle_1": bet_result.emissions,
+        "vehicle_2": diesel_result.emissions,
+        "vehicle_1_name": bet_result.vehicle_name,
+        "vehicle_2_name": diesel_result.vehicle_name,
+        "lifetime_distance": bet_result.lifetime_distance
+    }
+
+@pytest.fixture
+def investment_analysis_data(bet_scenario, diesel_scenario):
+    """
+    Fixture providing investment analysis data for UI tests.
+    """
+    from tco_model.calculator import TCOCalculator
+    calculator = TCOCalculator()
+    
+    # Modify scenarios to ensure investment analysis can be calculated
+    bet_scenario.vehicle.purchase_price = 500000  # Higher upfront
+    bet_scenario.economic.electricity_price_aud_per_kwh = 0.15  # Lower energy cost
+    
+    diesel_scenario.vehicle.purchase_price = 300000  # Lower upfront
+    diesel_scenario.economic.diesel_price_aud_per_l = 1.8  # Higher energy cost
+    
+    # Calculate TCO
+    bet_result = calculator.calculate(bet_scenario)
+    diesel_result = calculator.calculate(diesel_scenario)
+    
+    # Compare results
+    comparison = calculator.compare(bet_result, diesel_result)
+    
+    return {
+        "investment_analysis": comparison.investment_analysis,
+        "vehicle_1_name": bet_result.vehicle_name,
+        "vehicle_2_name": diesel_result.vehicle_name,
+        "vehicle_1_initial_cost": bet_scenario.vehicle.purchase_price,
+        "vehicle_2_initial_cost": diesel_scenario.vehicle.purchase_price
+    }
+
+@pytest.fixture
+def mock_browser_viewport():
+    """
+    Fixture providing mock viewport sizes for responsive testing.
+    """
+    return [
+        {"width": 375, "height": 667, "name": "mobile"},
+        {"width": 768, "height": 1024, "name": "tablet"},
+        {"width": 1366, "height": 768, "name": "laptop"},
+        {"width": 1920, "height": 1080, "name": "desktop"}
+    ]
 
 @pytest.fixture
 def economic_parameters() -> EconomicParameters:

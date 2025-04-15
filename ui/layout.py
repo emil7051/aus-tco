@@ -9,6 +9,7 @@ import streamlit as st
 from typing import Dict, Any, Optional
 import numpy as np
 import datetime
+from enum import Enum
 
 from tco_model.models import TCOOutput, ComparisonResult
 from ui.inputs.vehicle import render_vehicle_form
@@ -18,6 +19,107 @@ from tco_model.models import ScenarioInput
 import plotly.graph_objects as go
 from ui.results.charts import apply_chart_theme
 from ui.results.live_preview import display_results_in_live_mode
+
+
+class LayoutMode(Enum):
+    """
+    Enum for defining different layout modes in the application.
+    """
+    STEP_BY_STEP = "step_by_step"    # Traditional step-based UI with linear flow
+    SIDE_BY_SIDE = "side_by_side"    # Configuration and results side-by-side
+    TABBED = "tabbed"                # Tab-based UI for different sections
+    COMPACT = "compact"              # Compact UI for small screens
+    DASHBOARD = "dashboard"          # Dashboard-style layout emphasizing results
+
+
+def get_responsive_layout(viewport_width: int, viewport_height: int) -> Dict[str, Any]:
+    """
+    Get responsive layout configuration based on viewport dimensions.
+    
+    Args:
+        viewport_width: Browser viewport width in pixels
+        viewport_height: Browser viewport height in pixels
+        
+    Returns:
+        Dictionary with layout configuration properties:
+            - columns: Number of columns to use (1-3)
+            - sidebar_expanded: Whether sidebar should be expanded
+            - card_height: Height for cards
+            - font_size: Base font size
+    """
+    # Define viewport size breakpoints
+    mobile_max_width = 768
+    tablet_max_width = 1200
+    
+    # Mobile layout (1 column, collapsed sidebar)
+    if viewport_width <= mobile_max_width:
+        return {
+            "columns": 1,
+            "sidebar_expanded": False,
+            "card_height": "auto",
+            "font_size": "small"
+        }
+    # Tablet layout (2 columns, conditionally expanded sidebar)
+    elif viewport_width <= tablet_max_width:
+        return {
+            "columns": 2 if viewport_height > 800 else 1,
+            "sidebar_expanded": viewport_width > 900,
+            "card_height": "auto" if viewport_height < 800 else "250px",
+            "font_size": "medium"
+        }
+    # Desktop layout (2-3 columns, expanded sidebar)
+    else:
+        return {
+            "columns": 3 if viewport_width > 1600 and viewport_height > 900 else 2,
+            "sidebar_expanded": True,
+            "card_height": "300px" if viewport_height > 900 else "250px",
+            "font_size": "medium"
+        }
+
+
+def switch_layout_mode(config: Dict[str, Any], mode: LayoutMode) -> Dict[str, Any]:
+    """
+    Switch between different layout modes, preserving relevant configuration.
+    
+    Args:
+        config: Current layout configuration dictionary
+        mode: Target LayoutMode to switch to
+        
+    Returns:
+        Updated configuration dictionary
+    """
+    # Create a copy of the configuration to avoid modifying the original
+    new_config = config.copy()
+    
+    # Update the mode
+    new_config["mode"] = mode
+    
+    # Apply mode-specific settings
+    if mode == LayoutMode.STEP_BY_STEP:
+        new_config["sidebar_visible"] = False
+        new_config["show_breadcrumbs"] = True
+        new_config["show_progress"] = True
+    elif mode == LayoutMode.SIDE_BY_SIDE:
+        new_config["sidebar_visible"] = True
+        new_config["sidebar_expanded"] = True
+        new_config["show_breadcrumbs"] = False
+        new_config["show_progress"] = False
+    elif mode == LayoutMode.TABBED:
+        new_config["sidebar_visible"] = False
+        new_config["show_breadcrumbs"] = True
+        new_config["show_progress"] = True
+    elif mode == LayoutMode.COMPACT:
+        new_config["sidebar_visible"] = True
+        new_config["sidebar_expanded"] = False
+        new_config["show_breadcrumbs"] = False
+        new_config["show_progress"] = True
+    elif mode == LayoutMode.DASHBOARD:
+        new_config["sidebar_visible"] = True
+        new_config["sidebar_expanded"] = False
+        new_config["show_breadcrumbs"] = False
+        new_config["show_progress"] = False
+    
+    return new_config
 
 
 def create_live_preview_layout():
@@ -333,8 +435,25 @@ def load_default_comparison():
     
     # Load default scenarios
     try:
-        bet_scenario = load_default_scenario("default_bet")
-        ice_scenario = load_default_scenario("default_ice")
+        # Load BET vehicle as vehicle 1
+        bet_scenario = ScenarioData(
+            vehicle_type="BET",
+            vehicle_name="Battery Electric Truck",
+            purchase_price=450000,
+            annual_maintenance_cost=7500,
+            annual_insurance_cost=8000,
+            years_of_ownership=10
+        )
+        
+        # Load ICE vehicle as vehicle 2
+        ice_scenario = ScenarioData(
+            vehicle_type="Diesel",
+            vehicle_name="Diesel Truck",
+            purchase_price=250000,
+            annual_maintenance_cost=15000,
+            annual_insurance_cost=6000,
+            years_of_ownership=10
+        )
         
         # Set in session state
         st.session_state["vehicle_1_input"] = bet_scenario
@@ -346,4 +465,141 @@ def load_default_comparison():
         # Show success message
         st.success("Loaded sample BET vs Diesel comparison")
     except Exception as e:
-        st.error(f"Error loading default comparison: {str(e)}") 
+        st.error(f"Error loading default comparison: {str(e)}")
+
+
+def create_side_by_side_comparison(result1, result2):
+    """
+    Create a side-by-side comparison view of two vehicles.
+
+    Args:
+        result1: TCO result for the first vehicle
+        result2: TCO result for the second vehicle
+        
+    Returns:
+        HTML string with side-by-side comparison
+    """
+    # Import required modules
+    from tco_model.calculator import TCOCalculator
+    from utils.helpers import format_currency
+    
+    calculator = TCOCalculator()
+    comparison = calculator.compare(result1, result2)
+    
+    # Format key metrics
+    result1_tco = format_currency(result1.total_tco)
+    result2_tco = format_currency(result2.total_tco)
+    result1_lcod = format_currency(result1.lcod)
+    result2_lcod = format_currency(result2.lcod)
+    
+    # Calculate difference and % difference
+    tco_diff = format_currency(abs(comparison.tco_difference))
+    tco_diff_pct = f"{abs(comparison.tco_percentage):.1f}%"
+    
+    # Determine which vehicle is cheaper
+    if comparison.cheaper_option == 1:
+        cheaper_vehicle = result1.vehicle_name
+        cost_diff_indicator = "lower"
+    else:
+        cheaper_vehicle = result2.vehicle_name
+        cost_diff_indicator = "higher"
+    
+    # Get emissions data if available
+    emissions_1 = getattr(result1, 'emissions', None)
+    emissions_2 = getattr(result2, 'emissions', None)
+    
+    emissions_html = ""
+    if emissions_1 and emissions_2:
+        # Format emissions data
+        co2_1 = f"{emissions_1.total_co2_tonnes:.1f} tonnes"
+        co2_2 = f"{emissions_2.total_co2_tonnes:.1f} tonnes"
+        co2_per_km_1 = f"{emissions_1.co2_per_km:.0f} g/km"
+        co2_per_km_2 = f"{emissions_2.co2_per_km:.0f} g/km"
+        
+        # Calculate emissions difference
+        co2_diff = abs(emissions_1.total_co2_tonnes - emissions_2.total_co2_tonnes)
+        co2_diff_pct = abs(100 * (emissions_1.total_co2_tonnes - emissions_2.total_co2_tonnes) / 
+                      max(emissions_1.total_co2_tonnes, emissions_2.total_co2_tonnes))
+        
+        lower_emissions = result1.vehicle_name if emissions_1.total_co2_tonnes < emissions_2.total_co2_tonnes else result2.vehicle_name
+        
+        emissions_html = f"""
+        <div class="comparison-section emissions">
+            <h4>Emissions Comparison</h4>
+            <div class="comparison-row">
+                <div class="comparison-cell"><span class="label">Total CO₂:</span> {co2_1}</div>
+                <div class="comparison-cell"><span class="label">Total CO₂:</span> {co2_2}</div>
+            </div>
+            <div class="comparison-row">
+                <div class="comparison-cell"><span class="label">CO₂ per km:</span> {co2_per_km_1}</div>
+                <div class="comparison-cell"><span class="label">CO₂ per km:</span> {co2_per_km_2}</div>
+            </div>
+            <div class="comparison-insight">
+                <span class="highlight">{lower_emissions}</span> produces <span class="highlight">{co2_diff:.1f} tonnes</span> 
+                ({co2_diff_pct:.1f}%) less CO₂ over the vehicle lifetime
+            </div>
+        </div>
+        """
+    
+    # Build the HTML with component costs
+    from tco_model.terminology import UI_COMPONENT_KEYS, UI_COMPONENT_LABELS
+    
+    component_rows = ""
+    for component in UI_COMPONENT_KEYS:
+        # Skip residual value for better display
+        if component == "residual_value":
+            continue
+            
+        # Get component values
+        component_value1 = calculator.get_component_value(result1, component)
+        component_value2 = calculator.get_component_value(result2, component)
+        
+        # Format values
+        formatted_value1 = format_currency(component_value1)
+        formatted_value2 = format_currency(component_value2)
+        
+        # Get component label
+        component_label = UI_COMPONENT_LABELS.get(component, component.replace("_", " ").title())
+        
+        # Add component row
+        component_rows += f"""
+        <div class="comparison-row">
+            <div class="comparison-cell"><span class="label">{component_label}:</span> {formatted_value1}</div>
+            <div class="comparison-cell"><span class="label">{component_label}:</span> {formatted_value2}</div>
+        </div>
+        """
+    
+    # Build the complete HTML
+    html = f"""
+    <div class="side-by-side-comparison">
+        <div class="comparison-header">
+            <div class="vehicle-name">{result1.vehicle_name}</div>
+            <div class="vehicle-name">{result2.vehicle_name}</div>
+        </div>
+        
+        <div class="comparison-section tco">
+            <h4>TCO Comparison</h4>
+            <div class="comparison-row">
+                <div class="comparison-cell"><span class="label">Total TCO:</span> {result1_tco}</div>
+                <div class="comparison-cell"><span class="label">Total TCO:</span> {result2_tco}</div>
+            </div>
+            <div class="comparison-row">
+                <div class="comparison-cell"><span class="label">Cost per km:</span> {result1_lcod}/km</div>
+                <div class="comparison-cell"><span class="label">Cost per km:</span> {result2_lcod}/km</div>
+            </div>
+            <div class="comparison-insight">
+                <span class="highlight">{cheaper_vehicle}</span> is <span class="highlight">{tco_diff_pct}</span> 
+                {cost_diff_indicator} ({tco_diff})
+            </div>
+        </div>
+        
+        {emissions_html}
+        
+        <div class="comparison-section components">
+            <h4>Cost Components</h4>
+            {component_rows}
+        </div>
+    </div>
+    """
+    
+    return html 

@@ -1,0 +1,257 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.9, pytest-8.3.5, pluggy-1.5.0 -- /Users/edwardmiller/dev/aus-tco/venv/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/edwardmiller/dev/aus-tco
+configfile: pytest.ini
+plugins: cov-6.1.1
+collecting ... collected 15 items
+
+tests/unit/test_ui_components.py::TestTerminologyFunctions::test_component_labels FAILED [  6%]
+tests/unit/test_ui_components.py::TestTerminologyFunctions::test_vehicle_type_labels PASSED [ 13%]
+tests/unit/test_ui_components.py::TestTerminologyFunctions::test_formatting_functions PASSED [ 20%]
+tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_card FAILED [ 26%]
+tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_button FAILED [ 33%]
+tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_form_field FAILED [ 40%]
+tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_tooltip FAILED [ 46%]
+tests/unit/test_ui_components.py::TestCSSLoader::test_load_css_resources PASSED [ 53%]
+tests/unit/test_ui_components.py::TestCSSLoader::test_get_css_class PASSED [ 60%]
+tests/unit/test_ui_components.py::TestThemeSwitching::test_get_theme_css FAILED [ 66%]
+tests/unit/test_ui_components.py::TestThemeSwitching::test_switch_theme PASSED [ 73%]
+tests/unit/test_ui_components.py::TestResponsiveLayout::test_responsive_card_layout FAILED [ 80%]
+tests/unit/test_ui_components.py::TestResponsiveLayout::test_layout_mode_switching FAILED [ 86%]
+tests/unit/test_ui_components.py::TestNavigation::test_navigation_state PASSED [ 93%]
+tests/unit/test_ui_components.py::TestNavigation::test_progressive_disclosure FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ TestTerminologyFunctions.test_component_labels ________________
+
+self = <tests.unit.test_ui_components.TestTerminologyFunctions object at 0x11f31bd50>
+
+    def test_component_labels(self):
+        """Test component labels are accessible and follow Australian English."""
+        # Test a few key components
+        acquisition_label = get_component_label("acquisition")
+        assert "purchase" in acquisition_label.lower() or "acquisition" in acquisition_label.lower()
+    
+        energy_label = get_component_label("energy")
+        assert "energy" in energy_label.lower() or "fuel" in energy_label.lower()
+    
+        # Check for Australian spelling in at least one label
+>       assert "tyres" in UI_COMPONENT_LABELS.values() or "organisation" in UI_COMPONENT_LABELS.values()
+E       AssertionError: assert ('tyres' in dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']) or 'organisation' in dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']))
+E        +  where dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']) = <built-in method values of dict object at 0x10a4d0f40>()
+E        +    where <built-in method values of dict object at 0x10a4d0f40> = {'acquisition': 'Acquisition Costs', 'energy': 'Energy Costs', 'maintenance': 'Maintenance, Tyres & Repair', 'infrastructure': 'Infrastructure', 'battery_replacement': 'Battery Replacement', 'insurance_registration': 'Insurance & Registration', 'taxes_levies': 'Taxes & Levies', 'residual_value': 'Residual Value'}.values
+E        +  and   dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']) = <built-in method values of dict object at 0x10a4d0f40>()
+E        +    where <built-in method values of dict object at 0x10a4d0f40> = {'acquisition': 'Acquisition Costs', 'energy': 'Energy Costs', 'maintenance': 'Maintenance, Tyres & Repair', 'infrastructure': 'Infrastructure', 'battery_replacement': 'Battery Replacement', 'insurance_registration': 'Insurance & Registration', 'taxes_levies': 'Taxes & Levies', 'residual_value': 'Residual Value'}.values
+
+tests/unit/test_ui_components.py:37: AssertionError
+___________________ TestUIComponentFactory.test_create_card ____________________
+
+self = <tests.unit.test_ui_components.TestUIComponentFactory object at 0x11f3a3890>
+
+    def test_create_card(self):
+        """Test creating a card component."""
+        factory = UIComponentFactory()
+    
+        card = factory.create_card("Test Card", "This is a test card")
+    
+        # Check that the card has the correct structure
+>       assert '<div class="card"' in card
+E       TypeError: argument of type 'DeltaGenerator' is not iterable
+
+tests/unit/test_ui_components.py:75: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-04-14 23:41:05.989 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.001 
+  [33m[1mWarning:[0m to view this Streamlit app on a browser, run it with the following
+  command:
+
+    streamlit run /Users/edwardmiller/dev/aus-tco/venv/bin/pytest [ARGUMENTS]
+2025-04-14 23:41:06.001 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.001 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.001 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.001 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.001 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.001 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+__________________ TestUIComponentFactory.test_create_button ___________________
+
+self = <tests.unit.test_ui_components.TestUIComponentFactory object at 0x11f3a3f10>
+
+    def test_create_button(self):
+        """Test creating a button component."""
+        factory = UIComponentFactory()
+    
+        primary_button = factory.create_button("Primary Button", "primary")
+        secondary_button = factory.create_button("Secondary Button", "secondary")
+    
+        # Check button structure and classes
+>       assert '<button class="button button--primary"' in primary_button
+E       TypeError: argument of type 'bool' is not iterable
+
+tests/unit/test_ui_components.py:90: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-04-14 23:41:06.006 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.006 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.006 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.006 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.006 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.007 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.007 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.007 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.007 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.007 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+________________ TestUIComponentFactory.test_create_form_field _________________
+
+self = <tests.unit.test_ui_components.TestUIComponentFactory object at 0x11f3b8610>
+
+    def test_create_form_field(self):
+        """Test creating a form field component."""
+        factory = UIComponentFactory()
+    
+        form_field = factory.create_form_field(
+            "annual_distance",
+            "Annual Distance (km)",
+            "number",
+            "100000",
+            min_value="0",
+            max_value="1000000",
+            help_text="Enter the annual distance travelled by the vehicle"
+        )
+    
+        # Check form field structure
+>       assert '<div class="form-field"' in form_field
+E       TypeError: argument of type 'NoneType' is not iterable
+
+tests/unit/test_ui_components.py:110: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-04-14 23:41:06.011 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.011 Session state does not function when running a script without `streamlit run`
+__________________ TestUIComponentFactory.test_create_tooltip __________________
+
+self = <tests.unit.test_ui_components.TestUIComponentFactory object at 0x11f3b8d10>
+
+    def test_create_tooltip(self):
+        """Test creating a tooltip component."""
+        factory = UIComponentFactory()
+    
+        tooltip = factory.create_tooltip("Label with tooltip", "This is a tooltip")
+    
+        # Check tooltip structure
+>       assert '<div class="tooltip"' in tooltip
+E       TypeError: argument of type 'NoneType' is not iterable
+
+tests/unit/test_ui_components.py:128: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-04-14 23:41:06.015 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-04-14 23:41:06.015 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+____________________ TestThemeSwitching.test_get_theme_css _____________________
+
+self = <tests.unit.test_ui_components.TestThemeSwitching object at 0x11f3ba190>
+ui_theme_config = {'available_themes': ['default', 'high_contrast', 'dark'], 'current_theme': 'default', 'high_contrast': False}
+
+    def test_get_theme_css(self, ui_theme_config):
+        """Test getting theme CSS."""
+        from ui.theme import get_theme_css
+    
+        default_css = get_theme_css("default")
+        high_contrast_css = get_theme_css("high_contrast")
+        dark_css = get_theme_css("dark")
+    
+        # Check that each theme has unique properties
+        assert default_css != high_contrast_css
+        assert default_css != dark_css
+        assert high_contrast_css != dark_css
+    
+        # Check for theme-specific color variables
+>       assert "--primary-color" in default_css
+E       assert '--primary-color' in '/* ==========================================================================\n   Light Theme\n   ========================================================================== */\n\n:root {\n  /* Base theme colors */\n  --bg-primary: #ffffff;\n  --bg-secondary: #f5f5f5;\n  --bg-tertiary: #eaeaea;\n  --text-primary: #333333;\n  --text-secondary: #666666;\n  --border-color: #dddddd;\n  --divider-color: #eeeeee;\n  \n  /* Light theme specific RGB values for opacity usage */\n  --bet-primary-rgb: 38, 166, 154;\n  --diesel-primary-rgb: 251, 140, 0;\n  --error-color-rgb: 214, 39, 40;\n  --warning-color-rgb: 255, 127, 14;\n  --success-color-rgb: 44, 160, 44;\n  \n  /* UI element colors */\n  --card-bg: #ffffff;\n  --card-border: #dddddd;\n  --card-shadow: rgba(0, 0, 0, 0.05);\n  --input-bg: #ffffff;\n  --input-border: #cccccc;\n  --input-focus-border: #26A69A;\n  --input-placeholder: #999999;\n  \n  /* Chart colors */\n  --chart-grid-color: rgba(0, 0, 0, 0.1);\n  --chart-axis-color: rgba(0, 0, 0, 0.5);\n  --chart-tooltip-bg: rgba(255, 255, 255, 0.95);\n}\n\n/* Light theme specific adjustments */\n.stApp {\n  background-color: var(--bg-primary);\n}\n\n.sidebar .stButton > button {\n  background-color: var(--bet-primary);\n  color: white;\n}\n\n.stTabs [aria-selected="true"] {\n  background-color: var(--bet-primary);\n  color: white;\n}\n\n/* Table striping for better readability */\n.table-striped tr:nth-child(even) td {\n  background-color: var(--bg-secondary);\n} '
+
+tests/unit/test_ui_components.py:180: AssertionError
+_______________ TestResponsiveLayout.test_responsive_card_layout _______________
+
+self = <tests.unit.test_ui_components.TestResponsiveLayout object at 0x11f3baed0>
+mock_browser_viewport = [{'height': 667, 'name': 'mobile', 'width': 375}, {'height': 1024, 'name': 'tablet', 'width': 768}, {'height': 768, 'name': 'laptop', 'width': 1366}, {'height': 1080, 'name': 'desktop', 'width': 1920}]
+
+    def test_responsive_card_layout(self, mock_browser_viewport):
+        """Test responsive card layout."""
+>       from ui.layout import get_responsive_layout
+E       ImportError: cannot import name 'get_responsive_layout' from 'ui.layout' (/Users/edwardmiller/dev/aus-tco/ui/layout.py)
+
+tests/unit/test_ui_components.py:208: ImportError
+_______________ TestResponsiveLayout.test_layout_mode_switching ________________
+
+self = <tests.unit.test_ui_components.TestResponsiveLayout object at 0x11f3bad90>
+layout_config = {'mode': <LayoutMode.STEP_BY_STEP: 'step_by_step'>, 'results_preview_enabled': True, 'sidebar_collapsed': False, 'sidebar_visible': True}
+
+    def test_layout_mode_switching(self, layout_config):
+        """Test switching between layout modes."""
+>       from ui.layout import switch_layout_mode
+E       ImportError: cannot import name 'switch_layout_mode' from 'ui.layout' (/Users/edwardmiller/dev/aus-tco/ui/layout.py)
+
+tests/unit/test_ui_components.py:226: ImportError
+__________________ TestNavigation.test_progressive_disclosure __________________
+
+self = <tests.unit.test_ui_components.TestNavigation object at 0x11f3bb650>
+navigation_state = NavigationState(current_step='vehicle_parameters', completed_steps=['introduction', 'vehicle_parameters'], breadcrumb_...cle Parameters'], can_proceed=True, can_go_back=True, next_step='operational_parameters', previous_step='introduction')
+
+    def test_progressive_disclosure(self, navigation_state):
+        """Test progressive disclosure of steps."""
+        from ui.progressive_disclosure import get_available_steps
+    
+        available_steps = get_available_steps(navigation_state)
+    
+        # Check that steps are disclosed progressively
+>       assert "introduction" in available_steps
+E       AssertionError: assert 'introduction' in ['config', 'guide']
+
+tests/unit/test_ui_components.py:319: AssertionError
+=============================== warnings summary ===============================
+tco_model/schemas.py:70
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:70: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('min_rate', 'max_rate')
+
+tco_model/schemas.py:118
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:118: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('major_service_interval_km')
+
+tco_model/schemas.py:131
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:131: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('year_5', 'year_10', 'year_15')
+
+tco_model/schemas.py:165
+  /Users/edwardmiller/dev/aus-tco/tco_model/schemas.py:165: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('min_rate', 'max_rate')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.11.9-final-0 _______________
+
+Name                       Stmts   Miss  Cover   Missing
+--------------------------------------------------------
+tco_model/__init__.py          1      0   100%
+tco_model/calculator.py      239    214    10%   76-248, 261-290, 313-346, 360-442, 461-477, 490-493, 506-515, 527-579, 594-653, 676-697, 714-730
+tco_model/costs.py           156    143     8%   27-31, 49-69, 90-155, 178-215, 233-261, 279-308, 332-368, 385-432, 450-487
+tco_model/models.py          503    191    62%   97-99, 104-107, 116-164, 179, 183-184, 188, 192-193, 219-225, 239-260, 272-289, 302-307, 311, 326-328, 333-338, 342, 346, 360, 365, 369, 384-424, 436, 440-452, 456, 460-462, 480, 484, 488-498, 514-518, 527, 544-550, 587-589, 611-615, 629, 633, 637, 642, 647, 652, 657, 662, 667, 672, 677, 682, 687, 692, 698, 703, 722, 739, 744, 769, 785, 791, 798, 803, 808, 813, 839-857, 867-871
+tco_model/schemas.py         122     12    90%   72-74, 120-122, 133-135, 167-169
+tco_model/strategies.py      361    242    33%   39, 51, 72, 86, 98, 123-148, 166-185, 198-221, 239-258, 289-310, 327-346, 360-381, 394-412, 433, 445, 475-508, 537-553, 583-609, 630, 642, 675-695, 716, 728, 756-783, 796-803, 824, 836, 865-883, 913-924, 945, 957, 985-1003, 1028-1036, 1057, 1069, 1098-1124, 1145, 1157, 1184-1200, 1221, 1233, 1263-1283, 1336-1360, 1427, 1440, 1450, 1460, 1473, 1486-1487, 1497, 1507, 1517
+tco_model/terminology.py     124     71    43%   604, 619, 631, 643-645, 670-704, 717, 730, 743-749, 763-767, 780-783, 797-815, 830-860
+tco_model/vehicles.py        113    113     0%   8-330
+--------------------------------------------------------
+TOTAL                       1619    986    39%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/unit/test_ui_components.py::TestTerminologyFunctions::test_component_labels - AssertionError: assert ('tyres' in dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']) or 'organisation' in dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']))
+ +  where dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']) = <built-in method values of dict object at 0x10a4d0f40>()
+ +    where <built-in method values of dict object at 0x10a4d0f40> = {'acquisition': 'Acquisition Costs', 'energy': 'Energy Costs', 'maintenance': 'Maintenance, Tyres & Repair', 'infrastructure': 'Infrastructure', 'battery_replacement': 'Battery Replacement', 'insurance_registration': 'Insurance & Registration', 'taxes_levies': 'Taxes & Levies', 'residual_value': 'Residual Value'}.values
+ +  and   dict_values(['Acquisition Costs', 'Energy Costs', 'Maintenance, Tyres & Repair', 'Infrastructure', 'Battery Replacement', 'Insurance & Registration', 'Taxes & Levies', 'Residual Value']) = <built-in method values of dict object at 0x10a4d0f40>()
+ +    where <built-in method values of dict object at 0x10a4d0f40> = {'acquisition': 'Acquisition Costs', 'energy': 'Energy Costs', 'maintenance': 'Maintenance, Tyres & Repair', 'infrastructure': 'Infrastructure', 'battery_replacement': 'Battery Replacement', 'insurance_registration': 'Insurance & Registration', 'taxes_levies': 'Taxes & Levies', 'residual_value': 'Residual Value'}.values
+FAILED tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_card - TypeError: argument of type 'DeltaGenerator' is not iterable
+FAILED tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_button - TypeError: argument of type 'bool' is not iterable
+FAILED tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_form_field - TypeError: argument of type 'NoneType' is not iterable
+FAILED tests/unit/test_ui_components.py::TestUIComponentFactory::test_create_tooltip - TypeError: argument of type 'NoneType' is not iterable
+FAILED tests/unit/test_ui_components.py::TestThemeSwitching::test_get_theme_css - assert '--primary-color' in '/* ==========================================================================\n   Light Theme\n   ========================================================================== */\n\n:root {\n  /* Base theme colors */\n  --bg-primary: #ffffff;\n  --bg-secondary: #f5f5f5;\n  --bg-tertiary: #eaeaea;\n  --text-primary: #333333;\n  --text-secondary: #666666;\n  --border-color: #dddddd;\n  --divider-color: #eeeeee;\n  \n  /* Light theme specific RGB values for opacity usage */\n  --bet-primary-rgb: 38, 166, 154;\n  --diesel-primary-rgb: 251, 140, 0;\n  --error-color-rgb: 214, 39, 40;\n  --warning-color-rgb: 255, 127, 14;\n  --success-color-rgb: 44, 160, 44;\n  \n  /* UI element colors */\n  --card-bg: #ffffff;\n  --card-border: #dddddd;\n  --card-shadow: rgba(0, 0, 0, 0.05);\n  --input-bg: #ffffff;\n  --input-border: #cccccc;\n  --input-focus-border: #26A69A;\n  --input-placeholder: #999999;\n  \n  /* Chart colors */\n  --chart-grid-color: rgba(0, 0, 0, 0.1);\n  --chart-axis-color: rgba(0, 0, 0, 0.5);\n  --chart-tooltip-bg: rgba(255, 255, 255, 0.95);\n}\n\n/* Light theme specific adjustments */\n.stApp {\n  background-color: var(--bg-primary);\n}\n\n.sidebar .stButton > button {\n  background-color: var(--bet-primary);\n  color: white;\n}\n\n.stTabs [aria-selected="true"] {\n  background-color: var(--bet-primary);\n  color: white;\n}\n\n/* Table striping for better readability */\n.table-striped tr:nth-child(even) td {\n  background-color: var(--bg-secondary);\n} '
+FAILED tests/unit/test_ui_components.py::TestResponsiveLayout::test_responsive_card_layout - ImportError: cannot import name 'get_responsive_layout' from 'ui.layout' (/Users/edwardmiller/dev/aus-tco/ui/layout.py)
+FAILED tests/unit/test_ui_components.py::TestResponsiveLayout::test_layout_mode_switching - ImportError: cannot import name 'switch_layout_mode' from 'ui.layout' (/Users/edwardmiller/dev/aus-tco/ui/layout.py)
+FAILED tests/unit/test_ui_components.py::TestNavigation::test_progressive_disclosure - AssertionError: assert 'introduction' in ['config', 'guide']
+=================== 9 failed, 6 passed, 4 warnings in 0.55s ====================

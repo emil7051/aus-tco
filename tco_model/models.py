@@ -14,6 +14,15 @@ import numpy as np
 import warnings
 from dataclasses import dataclass
 
+# Import the canonical VehicleType from schemas
+from tco_model.schemas import VehicleType
+
+# Define additional types not in the schemas VehicleType
+class AdditionalVehicleTypes(str, Enum):
+    """Additional vehicle types not in the canonical VehicleType enum."""
+    FCEV = "fcev"
+    HEV = "hev"
+
 # --- Emissions and Investment Analysis Data Models ---
 
 @dataclass
@@ -38,14 +47,6 @@ class InvestmentAnalysis:
     has_payback: bool  # Whether payback occurs within analysis period
 
 # --- Utility Types and Enums ---
-
-class VehicleType(str, Enum):
-    """Vehicle types for TCO analysis."""
-    BET = "bet"
-    ICE = "ice"
-    FCEV = "fcev"
-    HEV = "hev"
-
 
 class VehicleCategory(str, Enum):
     """Category of heavy vehicle."""
@@ -467,7 +468,9 @@ class EconomicParameters(BaseModel):
     inflation_rate: float = Field(0.025, ge=0, le=0.5, description="Annual inflation rate")
     analysis_period_years: int = Field(15, ge=1, le=30, description="Analysis period in years")
     electricity_price_type: ElectricityRateType = Field(ElectricityRateType.AVERAGE_FLAT_RATE, description="Type of electricity price to use")
+    electricity_price_aud_per_kwh: float = Field(0.25, ge=0, le=2.0, description="Price of electricity in AUD per kWh")
     diesel_price_scenario: DieselPriceScenario = Field(DieselPriceScenario.MEDIUM_INCREASE, description="Diesel price scenario to use")
+    diesel_price_aud_per_l: float = Field(1.85, ge=0, le=5.0, description="Price of diesel in AUD per liter")
     carbon_tax_rate_aud_per_tonne: float = Field(30.0, ge=0, description="Carbon tax rate in AUD per tonne CO2e")
     carbon_tax_annual_increase_rate: float = Field(0.05, ge=0, description="Annual increase rate of carbon tax")
     
@@ -549,7 +552,7 @@ class VehicleBaseParameters(BaseModel):
 
 class BETParameters(VehicleBaseParameters):
     """Parameters specific to Battery Electric Trucks."""
-    type: Literal[VehicleType.BET] = VehicleType.BET
+    type: Literal[VehicleType.BATTERY_ELECTRIC] = VehicleType.BATTERY_ELECTRIC
     battery: BatteryParameters
     energy_consumption: BETConsumptionParameters
     charging: ChargingParameters
@@ -560,7 +563,7 @@ class BETParameters(VehicleBaseParameters):
 
 class DieselParameters(VehicleBaseParameters):
     """Parameters specific to Diesel Trucks."""
-    type: Literal[VehicleType.ICE] = VehicleType.ICE
+    type: Literal[VehicleType.DIESEL] = VehicleType.DIESEL
     engine: EngineParameters
     fuel_consumption: DieselConsumptionParameters
     maintenance: MaintenanceParameters
@@ -781,6 +784,12 @@ class TCOOutput(BaseModel):
         """Return the original scenario for testing purposes."""
         return self._scenario
     
+    # Add lifetime_distance property as alias for total_distance_km
+    @property
+    def lifetime_distance(self) -> float:
+        """Return the total distance over analysis period (alias for total_distance_km)."""
+        return self.total_distance_km
+    
     # All existing properties remain (except for the removed temporary aliases)
     # Keep existing total calculation properties
     @property
@@ -818,6 +827,43 @@ class ComparisonResult(BaseModel):
     
     # New field for investment analysis
     investment_analysis: Optional[InvestmentAnalysis] = None
+    
+    @staticmethod
+    def create(output1: TCOOutput, output2: TCOOutput) -> 'ComparisonResult':
+        """
+        Factory method to create a ComparisonResult from two TCOOutput objects.
+        
+        Args:
+            output1: First TCO output
+            output2: Second TCO output
+            
+        Returns:
+            A new ComparisonResult instance
+        """
+        # Calculate TCO difference and percentage
+        tco_difference = output2.total_tco - output1.total_tco
+        
+        # Calculate percentage differences
+        if output1.total_tco != 0:
+            tco_percentage = (tco_difference / output1.total_tco) * 100
+        else:
+            tco_percentage = 0
+            
+        if output1.lcod != 0:
+            lcod_percentage = ((output2.lcod - output1.lcod) / output1.lcod) * 100
+        else:
+            lcod_percentage = 0
+        
+        # Create comparison result
+        return ComparisonResult(
+            scenario_1=output1,
+            scenario_2=output2,
+            tco_difference=tco_difference,
+            tco_percentage=tco_percentage,
+            lcod_difference=output2.lcod - output1.lcod,
+            lcod_difference_percentage=lcod_percentage,
+            payback_year=None  # Would require additional calculation
+        )
     
     @property
     def component_differences(self) -> Dict[str, float]:

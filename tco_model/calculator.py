@@ -100,7 +100,7 @@ class TCOCalculator:
         
         # For BETs, get battery replacement strategy
         battery_replacement_strategy = None
-        if scenario.vehicle.type == VehicleType.BET:
+        if scenario.vehicle.type == VehicleType.BATTERY_ELECTRIC:
             battery_replacement_strategy = get_battery_replacement_strategy()
         
         # Calculate individual cost components for each year
@@ -128,7 +128,7 @@ class TCOCalculator:
             # Calculate battery replacement costs (only for BETs)
             annual_costs_df.loc[year, 'battery_replacement'] = (
                 battery_replacement_strategy.calculate_costs(scenario, year)
-                if battery_replacement_strategy and scenario.vehicle.type == VehicleType.BET
+                if battery_replacement_strategy and scenario.vehicle.type == VehicleType.BATTERY_ELECTRIC
                 else 0
             )
             
@@ -262,7 +262,7 @@ class TCOCalculator:
         total_co2 = 0
         energy_consumption = 0
         
-        if scenario.vehicle.type == VehicleType.BET:
+        if scenario.vehicle.type == VehicleType.BATTERY_ELECTRIC:
             # Calculate BET emissions from electricity
             for year in range(scenario.economic.analysis_period_years):
                 # Calculate based on electricity consumption and grid emissions intensity
@@ -345,6 +345,20 @@ class TCOCalculator:
         
         return comparison
     
+    # Alias for compare for backward compatibility
+    def compare_results(self, result1: TCOOutput, result2: TCOOutput) -> ComparisonResult:
+        """
+        Alias for the compare method for backward compatibility.
+        
+        Args:
+            result1: First TCO result
+            result2: Second TCO result
+            
+        Returns:
+            ComparisonResult: The comparison between the two TCO results
+        """
+        return self.compare(result1, result2)
+    
     def analyze_investment(self, result1: TCOOutput, result2: TCOOutput) -> InvestmentAnalysis:
         """
         Perform investment analysis between two vehicles.
@@ -411,6 +425,7 @@ class TCOCalculator:
         # Calculate payback period
         cumulative_flow = cash_flows[0]  # Start with initial investment (positive)
         payback_years = None
+        has_payback = False
         
         for year in range(1, len(cash_flows)):
             cumulative_flow += cash_flows[year]
@@ -419,6 +434,7 @@ class TCOCalculator:
                 previous_cumulative = cumulative_flow - cash_flows[year]
                 fraction = -previous_cumulative / cash_flows[year]
                 payback_years = year - 1 + fraction
+                has_payback = True
                 break
         
         # Calculate IRR
@@ -428,9 +444,11 @@ class TCOCalculator:
         except:
             pass  # IRR calculation may fail if no solution
         
-        # Calculate ROI
+        # Calculate ROI - set to None if no payback
         total_benefit = sum(cash_flows[1:])
-        roi = (total_benefit - upfront_diff) / upfront_diff * 100 if upfront_diff > 0 else None
+        roi = None
+        if has_payback and upfront_diff > 0:
+            roi = (total_benefit - upfront_diff) / upfront_diff * 100
         
         # Calculate NPV difference
         npv_difference = baseline_vehicle.total_tco - investment_vehicle.total_tco
@@ -440,7 +458,7 @@ class TCOCalculator:
             roi=roi,
             npv_difference=npv_difference,
             irr=irr,
-            has_payback=payback_years is not None
+            has_payback=has_payback
         )
     
     def get_component_value(self, result: TCOOutput, component: str) -> float:
@@ -530,7 +548,7 @@ class TCOCalculator:
         # Energy breakdown
         if "energy" in result.cost_components:
             energy_subcomponents = {}
-            if result.vehicle_type == VehicleType.BET:
+            if result.vehicle_type == VehicleType.BATTERY_ELECTRIC:
                 # Electricity breakdown 
                 energy_subcomponents["electricity_base"] = result.cost_components.get("energy", 0) * 0.7
                 energy_subcomponents["electricity_demand"] = result.cost_components.get("energy", 0) * 0.3
@@ -543,7 +561,7 @@ class TCOCalculator:
         # Maintenance breakdown
         if "maintenance" in result.cost_components:
             maintenance_subcomponents = {}
-            if result.vehicle_type == VehicleType.BET:
+            if result.vehicle_type == VehicleType.BATTERY_ELECTRIC:
                 maintenance_subcomponents["scheduled_maintenance"] = result.cost_components.get("maintenance", 0) * 0.4
                 maintenance_subcomponents["unscheduled_repairs"] = result.cost_components.get("maintenance", 0) * 0.3
                 maintenance_subcomponents["battery_maintenance"] = result.cost_components.get("maintenance", 0) * 0.3
@@ -591,11 +609,14 @@ class TCOCalculator:
         
         # Store original values
         original_value = None
-        for attr_name in parameter.split('.'):
-            if original_value is None:
-                original_value = getattr(scenario, attr_name, None)
-            else:
-                original_value = getattr(original_value, attr_name, None)
+        attr_parts = parameter.split('.')
+        obj = scenario
+        for i, attr_name in enumerate(attr_parts[:-1]):
+            obj = getattr(obj, attr_name, None)
+            if obj is None:
+                raise ValueError(f"Parameter path {'.'.join(attr_parts[:i+1])} not found in scenario")
+                
+        original_value = getattr(obj, attr_parts[-1], None)
                 
         if original_value is None:
             raise ValueError(f"Parameter {parameter} not found in scenario")
@@ -630,13 +651,11 @@ class TCOCalculator:
             attr_parts = parameter.split('.')
             
             # Navigate to the correct object
-            for i, attr_name in enumerate(attr_parts):
-                if i == len(attr_parts) - 1:
-                    # This is the final attribute, set it
-                    setattr(current_obj, attr_name, variation)
-                else:
-                    # Navigate to next object in chain
-                    current_obj = getattr(current_obj, attr_name)
+            for i, attr_name in enumerate(attr_parts[:-1]):
+                current_obj = getattr(current_obj, attr_name)
+            
+            # Set the parameter value
+            setattr(current_obj, attr_parts[-1], variation)
             
             # Calculate TCO
             test_result = self.calculate(test_scenario)
@@ -654,7 +673,8 @@ class TCOCalculator:
             "original_value": original_value,
             "original_tco": original_result.total_tco,
             "original_lcod": original_result.lcod,
-            "unit": unit
+            "unit": unit,
+            "vehicle_name": scenario.vehicle.name if hasattr(scenario.vehicle, 'name') else ""
         }
     
     def analyze_multiple_parameters(self, scenario: ScenarioInput, 

@@ -84,27 +84,43 @@ def display_results(results: Dict[str, TCOOutput], comparison: Optional[Comparis
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-def display_from_session_state():
+def display_from_session_state(session_id: str = None):
     """
-    Extract results from session state and display them.
+    Display results from session state
     
-    This function reads TCO results and comparison data from Streamlit's session state
-    and passes them to the display_results function.
+    Args:
+        session_id: Optional session identifier to use for retrieving results
     """
-    # Check if results exist in session state
-    if "results" not in st.session_state or not st.session_state.results:
-        st.warning("No calculation results available. Please run a calculation first.")
-        return
+    # Determine which keys to use based on session_id
+    if session_id:
+        results_key = f"results_{session_id}"
+        comparison_key = f"comparison_{session_id}"
+    else:
+        results_key = "results"
+        comparison_key = "comparison"
     
-    # Extract results from session state
-    results = st.session_state.results
-    comparison = st.session_state.get("comparison")
+    # Try to get results and comparison data
+    results = st.session_state.get(results_key)
+    comparison = st.session_state.get(comparison_key)
     
-    # Set last display time for reference
-    st.session_state["last_results_display"] = datetime.datetime.now().strftime("%H:%M:%S")
+    # Fall back to original keys if specific ones aren't found
+    if results is None:
+        results = st.session_state.get("results")
+    if comparison is None:
+        comparison = st.session_state.get("comparison")
     
-    # Display the results
-    display_results(results, comparison)
+    # Display results if available
+    if results and comparison:
+        # Create tabs for different views
+        tab1, tab2 = st.tabs(["Executive Dashboard", "Detailed Dashboard"])
+        
+        with tab1:
+            render_executive_dashboard(results, comparison)
+        
+        with tab2:
+            render_detailed_dashboard(results, comparison)
+    else:
+        st.info("No results to display. Please run the analysis first.")
 
 
 def render_detailed_dashboard(results: Dict[str, TCOOutput], comparison: ComparisonResult):

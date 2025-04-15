@@ -198,7 +198,13 @@ class BETEnergyConsumptionStrategy(EnergyConsumptionStrategy):
         if not isinstance(scenario.vehicle, BETParameters):
             raise ValueError("Vehicle must be a BET for this strategy")
         
-        # Use the rate type from economic parameters
+        # First check if a specific electricity price is set for sensitivity analysis
+        if hasattr(scenario.economic, 'electricity_price_aud_per_kwh'):
+            electricity_price = scenario.economic.electricity_price_aud_per_kwh
+            if electricity_price is not None and isinstance(electricity_price, (int, float)) and electricity_price > 0:
+                return electricity_price
+        
+        # Otherwise, use the rate type from economic parameters
         rate_type = scenario.economic.electricity_price_type
         charging_strategy = scenario.vehicle.charging.strategy
         
@@ -356,7 +362,14 @@ class DieselConsumptionStrategy(EnergyConsumptionStrategy):
         Returns:
             float: The diesel price in AUD/L
         """
-        # Use the price scenario from economic parameters
+        # If a specific diesel price is set, use that for sensitivity analysis
+        if hasattr(scenario.economic, 'diesel_price_aud_per_l'):
+            # Ensure we get a proper numeric value
+            diesel_price = scenario.economic.diesel_price_aud_per_l
+            if diesel_price is not None and isinstance(diesel_price, (int, float)) and diesel_price > 0:
+                return diesel_price
+        
+        # Otherwise, use the price scenario from economic parameters
         price_scenario = scenario.economic.diesel_price_scenario
         
         # This would be implemented to fetch prices from configuration or projections

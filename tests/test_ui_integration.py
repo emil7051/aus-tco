@@ -11,7 +11,7 @@ def test_metrics_panel_integration():
         scenario_name="Test BET Scenario",
         vehicle={
             "name": "Test Electric",
-            "type": VehicleType.BET,
+            "type": VehicleType.BATTERY_ELECTRIC,
             "category": "rigid",
             "purchase_price": 500000,
             "annual_price_decrease_real": 0.02,
@@ -75,7 +75,7 @@ def test_metrics_panel_integration():
         scenario_name="Test Diesel Scenario",
         vehicle={
             "name": "Test Diesel",
-            "type": VehicleType.ICE,
+            "type": VehicleType.DIESEL,
             "category": "rigid",
             "purchase_price": 300000,
             "annual_price_decrease_real": 0.01,

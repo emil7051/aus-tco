@@ -17,6 +17,7 @@ from tco_model.terminology import (
     get_ui_component_label,
     get_component_description,
 )
+from tco_model.schemas import VehicleType
 
 
 def get_formatted_label(key: str, include_units: bool = False, 
@@ -55,6 +56,94 @@ def get_formatted_label(key: str, include_units: bool = False,
         return label, tooltip
     
     return label
+
+
+def get_component_label(component_key: str) -> str:
+    """
+    Get the label for a cost component.
+    
+    Args:
+        component_key: The component key
+        
+    Returns:
+        The formatted label for the component
+    """
+    if component_key in UI_COMPONENT_LABELS:
+        return UI_COMPONENT_LABELS[component_key]
+    return component_key.replace('_', ' ').title()
+
+
+def get_vehicle_type_label(vehicle_type: Union[str, VehicleType]) -> str:
+    """
+    Get a formatted label for a vehicle type with abbreviation.
+    
+    Args:
+        vehicle_type: The vehicle type (string or enum)
+        
+    Returns:
+        Formatted vehicle type label with abbreviation
+    """
+    # Convert enum to value if needed
+    if isinstance(vehicle_type, VehicleType):
+        vehicle_type = vehicle_type.value
+        
+    # Map of vehicle types to labels with abbreviations
+    labels = {
+        VehicleType.BATTERY_ELECTRIC.value: "Battery Electric Truck (BET)",
+        VehicleType.DIESEL.value: "Diesel Truck (ICE)",
+        "hydrogen_fuel_cell": "Hydrogen Fuel Cell (FCEV)",
+        "hybrid": "Hybrid Electric Truck (HET)"
+    }
+    
+    return labels.get(vehicle_type, vehicle_type.replace('_', ' ').title())
+
+
+def format_currency(value: float, include_cents: bool = True) -> str:
+    """
+    Format a value as Australian currency.
+    
+    Args:
+        value: The value to format
+        include_cents: Whether to include cents in the formatting
+        
+    Returns:
+        Formatted currency string
+    """
+    if include_cents:
+        return f"${value:,.2f}"
+    return f"${value:,.0f}"
+
+
+def format_percentage(value: float, include_decimal: bool = True) -> str:
+    """
+    Format a value as a percentage.
+    
+    Args:
+        value: The value to format (e.g., 0.15 for 15%)
+        include_decimal: Whether to include decimal places
+        
+    Returns:
+        Formatted percentage string
+    """
+    if include_decimal:
+        return f"{value * 100:.1f}%"
+    return f"{int(value * 100)}%"
+
+
+def format_number_with_unit(value: float, unit: str, decimal_places: int = 1) -> str:
+    """
+    Format a number with its unit.
+    
+    Args:
+        value: The value to format
+        unit: The unit to append
+        decimal_places: Number of decimal places to include
+        
+    Returns:
+        Formatted number with unit
+    """
+    format_str = f"{{:.{decimal_places}f}} {unit}"
+    return format_str.format(value)
 
 
 def create_impact_indicator(key: str) -> dict:
@@ -137,19 +226,23 @@ def get_component_color(component_key: str) -> str:
     return '#7f7f7f'  # Default gray
 
 
-def get_vehicle_type_color(vehicle_type: str) -> str:
+def get_vehicle_type_color(vehicle_type: Union[str, VehicleType]) -> str:
     """
     Get the standard color for a vehicle type.
     
     Args:
-        vehicle_type: The vehicle type string
+        vehicle_type: The vehicle type (string or enum)
         
     Returns:
         The hex color code for the vehicle type
     """
+    # Convert enum to value if needed
+    if isinstance(vehicle_type, VehicleType):
+        vehicle_type = vehicle_type.value
+        
     vehicle_colors = {
-        "battery_electric": "#26A69A",  # Teal
-        "diesel": "#FB8C00",            # Orange
+        VehicleType.BATTERY_ELECTRIC.value: "#26A69A",  # Teal
+        VehicleType.DIESEL.value: "#FB8C00",            # Orange
     }
     return vehicle_colors.get(vehicle_type, "#7f7f7f")
 

@@ -166,9 +166,11 @@ def create_tco_comparison_visualization(result1: TCOOutput, result2: TCOOutput,
     # Add arrow annotation showing the difference
     if comparison.cheaper_option == 1:
         arrow_color = 'green'
+        saving_percent = f"{abs(comparison.tco_percentage):.1f}%"
         arrow_text = f"{saving_percent} lower"
     else:
         arrow_color = 'red'
+        saving_percent = f"{abs(comparison.tco_percentage):.1f}%"
         arrow_text = f"{saving_percent} higher"
     
     # Style the chart

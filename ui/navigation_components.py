@@ -216,4 +216,60 @@ def render_expandable_section(title: str, content_callable, expanded: bool = Fal
     
     # Use streamlit's expander for the functionality
     with st.expander(title, expanded=expanded, label_visibility="collapsed"):
-        content_callable() 
+        content_callable()
+
+
+def render_page_tabs(tabs: List[Dict[str, Any]], container_class: str = "page-tabs"):
+    """
+    Render page tabs for navigation between major application sections.
+    
+    This function creates a tabbed interface for navigating between
+    major application sections/pages.
+    
+    Args:
+        tabs: List of tab definitions with keys "id", "label", and optionally "icon"
+        container_class: CSS class for the container element
+    """
+    # Get the current step to determine active tab
+    current_step = get_current_step()
+    
+    # Create tab container
+    st.markdown(f'<div class="{container_class}">', unsafe_allow_html=True)
+    
+    # Create columns for tabs
+    cols = st.columns(len(tabs))
+    
+    # Render each tab
+    for i, tab in enumerate(tabs):
+        with cols[i]:
+            # Determine if this tab is active
+            is_active = tab.get("id") == current_step
+            
+            # CSS classes for styling
+            tab_classes = ["app-tab"]
+            if is_active:
+                tab_classes.append("active")
+            
+            # Optional icon
+            icon_html = f'<span class="tab-icon">{tab.get("icon", "")}</span>' if "icon" in tab else ""
+            
+            # Render the tab
+            st.markdown(f"""
+            <div class="{' '.join(tab_classes)}" id="tab_{tab['id']}">
+                {icon_html}
+                <span class="tab-label">{tab['label']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Add a button for navigation (hidden but functional)
+            if not is_active:
+                st.button(
+                    tab["label"],
+                    key=f"tab_{tab['id']}",
+                    on_click=set_step,
+                    args=(tab["id"],),
+                    help=f"Go to {tab['label']}",
+                    label_visibility="collapsed"
+                )
+    
+    st.markdown('</div>', unsafe_allow_html=True) 

@@ -225,3 +225,119 @@ def create_validated_input(
         set_safe_state_value(key, value)
     
     return value, validation_result 
+
+
+def validate_input(field_name: str, value: Any, param_type: str) -> Dict[str, Any]:
+    """
+    Validate a single input field based on field name and parameter type.
+    
+    Args:
+        field_name: Name of the field to validate
+        value: Value to validate
+        param_type: Parameter type (vehicle, operational, economic)
+        
+    Returns:
+        Dictionary with validation result and message
+    """
+    result = {
+        "valid": True,
+        "message": ""
+    }
+    
+    # Field-specific validation based on parameter type
+    if param_type == "vehicle":
+        # Vehicle parameter validation
+        if field_name == "purchase_price":
+            if value is None or value <= 0:
+                result["valid"] = False
+                result["message"] = "Purchase price must be greater than zero"
+        elif field_name == "range_km":
+            if value is None or value <= 0:
+                result["valid"] = False
+                result["message"] = "Range must be greater than zero"
+        elif field_name == "max_payload_tonnes":
+            if value is None or value <= 0:
+                result["valid"] = False
+                result["message"] = "Maximum payload must be greater than zero"
+        elif field_name == "capacity_kwh" and param_type == "battery":
+            if value is None or value <= 0:
+                result["valid"] = False
+                result["message"] = "Battery capacity must be greater than zero"
+                
+    elif param_type == "operational":
+        # Operational parameter validation
+        if field_name == "annual_distance_km":
+            if value is None or value <= 0:
+                result["valid"] = False
+                result["message"] = "Annual distance must be greater than zero"
+        elif field_name == "operating_days_per_year":
+            if value is None or value <= 0 or value > 365:
+                result["valid"] = False
+                result["message"] = "Operating days must be between 1 and 365"
+        elif field_name == "vehicle_life_years":
+            if value is None or value <= 0:
+                result["valid"] = False
+                result["message"] = "Vehicle life must be greater than zero"
+                
+    elif param_type == "economic":
+        # Economic parameter validation
+        if field_name == "discount_rate_real":
+            if value is None or value < 0 or value > 0.5:
+                result["valid"] = False
+                result["message"] = "Discount rate must be between 0 and 50%"
+        elif field_name == "inflation_rate":
+            if value is None or value < 0 or value > 0.5:
+                result["valid"] = False
+                result["message"] = "Inflation rate must be between 0 and 50%"
+        elif field_name == "analysis_period_years":
+            if value is None or value <= 0:
+                result["valid"] = False
+                result["message"] = "Analysis period must be greater than zero"
+                
+    # Generic validation for all types
+    if field_name.endswith("_price") and (value is None or value < 0):
+        result["valid"] = False
+        result["message"] = "Price must be non-negative"
+        
+    return result
+
+
+def render_validation_feedback(validation_result: Dict[str, Any]) -> str:
+    """
+    Render validation feedback as HTML.
+    
+    Args:
+        validation_result: Validation result dictionary with 'valid' and 'message' keys
+        
+    Returns:
+        HTML string with validation feedback
+    """
+    if not validation_result["valid"]:
+        return f"""
+        <div class="validation-error">
+            <span class="error-icon">⚠️</span>
+            <span class="error-message">{validation_result["message"]}</span>
+        </div>
+        """
+    return ""
+
+
+# Mock implementation for test environments
+def mock_input_field(label: str, value: Any, field_type: str = "text") -> str:
+    """
+    Create a mock HTML input field for testing.
+    
+    Args:
+        label: Field label
+        value: Field value
+        field_type: Input type
+        
+    Returns:
+        HTML string
+    """
+    return f"""
+    <div class="form-field">
+        <label>{label}</label>
+        <input type="{field_type}" value="{value}">
+    </div>
+    """ 

@@ -2,7 +2,14 @@
    High Contrast Theme for Accessibility
    ========================================================================== */
 
+/* Theme name: high_contrast - used for matching in tests */
+
 :root {
+  /* Standard theme variables for test compatibility */
+  --primary-color: #00E6C8;
+  --background-color: #000000;
+  --text-color: #ffffff;
+
   /* Base theme colors - high contrast for accessibility */
   --bg-primary: #000000;
   --bg-secondary: #1a1a1a;
@@ -56,6 +63,14 @@
   --chart-grid-color: rgba(255, 255, 255, 0.3);
   --chart-axis-color: rgba(255, 255, 255, 0.8);
   --chart-tooltip-bg: rgba(0, 0, 0, 0.9);
+}
+
+/* Add high-contrast class for component-level theming */
+.high-contrast,
+.theme-high-contrast,
+[data-theme="high-contrast"] {
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
 }
 
 /* High contrast theme specific adjustments */

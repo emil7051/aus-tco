@@ -82,6 +82,79 @@ def load_css(theme: str = "light") -> None:
     # Inject the CSS into the Streamlit app
     st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
 
+def load_css_resources() -> str:
+    """
+    Load CSS resources for testing purposes.
+    
+    This is similar to load_css but returns the CSS as a string instead
+    of injecting it into Streamlit.
+    
+    Returns:
+        All CSS content as a single string
+    """
+    # Get CSS directory path
+    css_dir = get_css_dir()
+    
+    # Define the paths to CSS files (same as in load_css)
+    base_files = [
+        css_dir / "base" / "reset.css",
+        css_dir / "base" / "variables.css",
+        css_dir / "base" / "typography.css",
+        css_dir / "base" / "layout.css"
+    ]
+    
+    component_files = [
+        css_dir / "components" / "cards.css",
+        css_dir / "components" / "forms.css",
+        css_dir / "components" / "navigation.css",
+        css_dir / "components" / "metrics.css",
+        css_dir / "components" / "sidebar.css",
+        css_dir / "components" / "tables.css",
+        css_dir / "components" / "parameter_indicators.css"
+    ]
+    
+    # Theme-specific overrides (use light theme as default)
+    theme_file = css_dir / "themes" / "light-theme.css"
+    
+    # Combine all CSS into a single string
+    css_content = ""
+    
+    # Function to safely read CSS file (same as in load_css)
+    def read_css_file(file_path: Path) -> str:
+        if file_path.exists():
+            with open(file_path, "r") as f:
+                return f.read() + "\n"
+        else:
+            return f"/* CSS file not found: {file_path} */\n"
+    
+    # Add base files first
+    for file_path in base_files:
+        css_content += read_css_file(file_path)
+    
+    # Add component files
+    for file_path in component_files:
+        css_content += read_css_file(file_path)
+    
+    # Add theme-specific overrides last
+    css_content += read_css_file(theme_file)
+    
+    return css_content
+
+def get_css_class(base_class: str, modifier: Optional[str] = None) -> str:
+    """
+    Get CSS class names following BEM naming convention.
+    
+    Args:
+        base_class: The base class name
+        modifier: Optional modifier for the class
+        
+    Returns:
+        The complete class name string
+    """
+    if modifier:
+        return f"{base_class} {base_class}--{modifier}"
+    return base_class
+
 def load_single_css_file(file_name: str) -> None:
     """
     Load a single CSS file and inject it into the Streamlit app.

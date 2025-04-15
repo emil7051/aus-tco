@@ -1,0 +1,16 @@
+{
+  "current_step": "vehicle_parameters",
+  "completed_steps": [
+    "introduction",
+    "vehicle_parameters",
+    "vehicle_parameters"
+  ],
+  "breadcrumb_history": [
+    "Home",
+    "Vehicle Parameters"
+  ],
+  "can_proceed": true,
+  "can_go_back": true,
+  "next_step": "operational_parameters",
+  "previous_step": "config"
+}

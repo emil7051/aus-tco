@@ -198,18 +198,18 @@ def get_vehicle_type(state_prefix: str) -> str:
         state_prefix: State prefix
         
     Returns:
-        Vehicle type string
+        Vehicle type value as canonical string (battery_electric or diesel)
     """
-    from tco_model.models import VehicleType
+    from tco_model.schemas import VehicleType
     
     # Get vehicle type
     vehicle_type = get_safe_state_value(f"{state_prefix}.vehicle.type", VehicleType.DIESEL.value)
     
-    # Convert to simplified string
+    # Return canonical value
     if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
-        return "bet"
+        return VehicleType.BATTERY_ELECTRIC.value
     else:
-        return "diesel"
+        return VehicleType.DIESEL.value
 
 
 def render_vehicle_header(vehicle_number: int, vehicle_type: str) -> None:

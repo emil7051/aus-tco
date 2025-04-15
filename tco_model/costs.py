@@ -112,9 +112,11 @@ def calculate_energy_costs(scenario: ScenarioInput, year: int) -> float:
         electricity_price = 0.25  # AUD/kWh - simplified example
         
         # Apply year-on-year changes if available in economic parameters
-        if hasattr(scenario.economic, 'electricity_price_projections'):
+        if hasattr(scenario.economic, 'electricity_price_aud_per_kwh'):
+            electricity_price = scenario.economic.electricity_price_aud_per_kwh
+        elif hasattr(scenario.economic, 'electricity_price_projections'):
             electricity_price = scenario.economic.electricity_price_projections.get_for_year(year)
-            
+        
         return grid_consumption_kwh * electricity_price
     
     elif scenario.vehicle.type == VehicleType.DIESEL:
