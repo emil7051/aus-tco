@@ -758,6 +758,7 @@ class TCOOutput(BaseModel):
     total_nominal_cost: float = Field(..., description="Total nominal cost over analysis period")
     calculation_date: date = Field(default_factory=date.today, description="Date of calculation")
     _scenario: Optional[ScenarioInput] = PrivateAttr(default=None)
+    _cost_components: Dict[str, float] = PrivateAttr(default=None)
     
     # New field for emissions data
     emissions: Optional[EmissionsData] = None
@@ -766,6 +767,11 @@ class TCOOutput(BaseModel):
     @property
     def cost_components(self) -> Dict[str, float]:
         """Get cost components as a dictionary for easy access."""
+        # Use cached cost_components if available (for sensitivity analysis)
+        if hasattr(self, '_cost_components') and self._cost_components is not None:
+            return self._cost_components
+            
+        # Fall back to getting values from npv_costs
         return {
             "acquisition": self.npv_costs.acquisition,
             "energy": self.npv_costs.energy,

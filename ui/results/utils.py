@@ -24,6 +24,7 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from PIL import Image, ImageDraw
+from openpyxl.drawing.image import Image as XLImage
 
 # Common cost component mappings
 # These represent the standardized cost categories shown across all visualizations
@@ -450,7 +451,7 @@ def generate_results_export(results, comparison, include_emissions=True, include
         img_bytes = export_chart_as_image(cost_chart, "png")
         
         # Add image to workbook
-        img = Image(io.BytesIO(img_bytes))
+        img = XLImage(io.BytesIO(img_bytes))
         img.width = 500
         img.height = 300
         charts_sheet.add_image(img, f'A{chart_row}')
@@ -465,7 +466,7 @@ def generate_results_export(results, comparison, include_emissions=True, include
         img_bytes = export_chart_as_image(cumul_chart, "png")
         
         # Add image to workbook
-        img = Image(io.BytesIO(img_bytes))
+        img = XLImage(io.BytesIO(img_bytes))
         img.width = 500
         img.height = 300
         charts_sheet.add_image(img, f'A{chart_row}')

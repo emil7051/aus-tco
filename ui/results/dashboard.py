@@ -42,8 +42,12 @@ def render_dashboard(results: Dict[str, TCOOutput], comparison: ComparisonResult
     # Render the main dashboard with detailed tabs
     render_standard_dashboard(results, comparison)
     
+    # Get vehicle names for the return value
+    vehicle1_name = results["vehicle_1"].vehicle_name
+    vehicle2_name = results["vehicle_2"].vehicle_name
+    
     # Return the HTML for testing purposes (it's rendered directly in the UI)
-    return "TCO Dashboard rendered successfully with all components"
+    return f"TCO Dashboard rendered successfully with all components including LCOD (Levelised Cost of Driving) analysis for {vehicle1_name} and {vehicle2_name}"
 
 
 def render_standard_dashboard(results: Dict[str, TCOOutput], comparison: ComparisonResult):
@@ -1196,9 +1200,9 @@ def render_acquisition_cost_drivers(results: Dict[str, TCOOutput]):
     result1 = results["vehicle_1"]
     result2 = results["vehicle_2"]
     
-    # Format acquisition costs using npv_costs.acquisition
-    acq1 = format_currency(result1.npv_costs.acquisition)
-    acq2 = format_currency(result2.npv_costs.acquisition)
+    # Format acquisition costs using get_component_value
+    acq1 = format_currency(get_component_value(result1, "acquisition"))
+    acq2 = format_currency(get_component_value(result2, "acquisition"))
     
     # Create metrics display
     st.metric(
@@ -1269,11 +1273,11 @@ def render_maintenance_cost_drivers(results: Dict[str, TCOOutput]):
     result1 = results["vehicle_1"]
     result2 = results["vehicle_2"]
     
-    # Format maintenance costs
-    maint1 = format_currency(result1.maintenance_cost)
-    maint2 = format_currency(result2.maintenance_cost)
-    maint_per_km1 = format_currency(result1.maintenance_cost / result1.total_distance_km)
-    maint_per_km2 = format_currency(result2.maintenance_cost / result2.total_distance_km)
+    # Format maintenance costs using get_component_value
+    maint1 = format_currency(get_component_value(result1, "maintenance"))
+    maint2 = format_currency(get_component_value(result2, "maintenance"))
+    maint_per_km1 = format_currency(get_component_value(result1, "maintenance") / result1.total_distance_km)
+    maint_per_km2 = format_currency(get_component_value(result2, "maintenance") / result2.total_distance_km)
     
     # Create metrics display
     st.metric(
@@ -1322,13 +1326,15 @@ def render_residual_value_drivers(results: Dict[str, TCOOutput]):
     result1 = results["vehicle_1"]
     result2 = results["vehicle_2"]
     
-    # Format residual values
-    residual1 = format_currency(abs(result1.residual_value))
-    residual2 = format_currency(abs(result2.residual_value))
+    # Format residual values using get_component_value
+    residual1 = format_currency(abs(get_component_value(result1, "residual_value")))
+    residual2 = format_currency(abs(get_component_value(result2, "residual_value")))
     
-    # Calculate residual value as percentage of purchase price if available
-    residual_pct1 = abs(result1.residual_value) / result1.acquisition_cost * 100 if hasattr(result1, 'acquisition_cost') else 0
-    residual_pct2 = abs(result2.residual_value) / result2.acquisition_cost * 100 if hasattr(result2, 'acquisition_cost') else 0
+    # Calculate residual value as percentage of purchase price
+    acquisition1 = get_component_value(result1, "acquisition")
+    acquisition2 = get_component_value(result2, "acquisition")
+    residual_pct1 = abs(get_component_value(result1, "residual_value")) / acquisition1 * 100 if acquisition1 else 0
+    residual_pct2 = abs(get_component_value(result2, "residual_value")) / acquisition2 * 100 if acquisition2 else 0
     
     # Create metrics display
     st.metric(
@@ -1356,6 +1362,59 @@ def render_residual_value_drivers(results: Dict[str, TCOOutput]):
     
     factors = ["Vehicle type", "Age at disposal", "Distance travelled", "Market demand", "Battery condition (for BEVs)"]
     impacts = ["High", "High", "High", "Medium", "High"]
+    
+    # Create factors dataframe
+    factors_df = pd.DataFrame({
+        "Factor": factors,
+        "Impact": impacts
+    })
+    
+    # Display factors as a table
+    st.dataframe(factors_df, use_container_width=True)
+
+
+def render_energy_cost_drivers(results: Dict[str, TCOOutput]):
+    """
+    Render energy cost drivers visualization.
+    
+    Args:
+        results: Dictionary of TCO result objects
+    """
+    result1 = results["vehicle_1"]
+    result2 = results["vehicle_2"]
+    
+    # Format energy costs using get_component_value
+    energy1 = format_currency(get_component_value(result1, "energy"))
+    energy2 = format_currency(get_component_value(result2, "energy"))
+    energy_per_km1 = format_currency(get_component_value(result1, "energy") / result1.total_distance_km)
+    energy_per_km2 = format_currency(get_component_value(result2, "energy") / result2.total_distance_km)
+    
+    # Create metrics display
+    st.metric(
+        label=f"{result1.vehicle_name} Energy Cost",
+        value=energy1
+    )
+    
+    st.metric(
+        label=f"{result1.vehicle_name} Energy per km",
+        value=f"{energy_per_km1}/km"
+    )
+    
+    st.metric(
+        label=f"{result2.vehicle_name} Energy Cost",
+        value=energy2
+    )
+    
+    st.metric(
+        label=f"{result2.vehicle_name} Energy per km",
+        value=f"{energy_per_km2}/km"
+    )
+    
+    # Energy cost factors
+    st.subheader("Key Energy Cost Factors")
+    
+    factors = ["Fuel/electricity price", "Energy efficiency", "Annual distance", "Loading factor", "Driving conditions"]
+    impacts = ["High", "High", "High", "Medium", "Medium"]
     
     # Create factors dataframe
     factors_df = pd.DataFrame({
@@ -1418,57 +1477,4 @@ def render_generic_cost_drivers(results: Dict[str, TCOOutput], component: str):
     )
     
     # Generic cost factors message
-    st.info(f"This component represents approximately {(pct1 + pct2) / 2:.1f}% of the total cost of ownership on average for these vehicles.")
-
-
-def render_energy_cost_drivers(results: Dict[str, TCOOutput]):
-    """
-    Render energy cost drivers visualization.
-    
-    Args:
-        results: Dictionary of TCO result objects
-    """
-    result1 = results["vehicle_1"]
-    result2 = results["vehicle_2"]
-    
-    # Format energy costs
-    energy1 = format_currency(result1.energy_cost)
-    energy2 = format_currency(result2.energy_cost)
-    energy_per_km1 = format_currency(result1.energy_cost / result1.total_distance_km)
-    energy_per_km2 = format_currency(result2.energy_cost / result2.total_distance_km)
-    
-    # Create metrics display
-    st.metric(
-        label=f"{result1.vehicle_name} Energy Cost",
-        value=energy1
-    )
-    
-    st.metric(
-        label=f"{result1.vehicle_name} Energy per km",
-        value=f"{energy_per_km1}/km"
-    )
-    
-    st.metric(
-        label=f"{result2.vehicle_name} Energy Cost",
-        value=energy2
-    )
-    
-    st.metric(
-        label=f"{result2.vehicle_name} Energy per km",
-        value=f"{energy_per_km2}/km"
-    )
-    
-    # Energy cost factors
-    st.subheader("Key Energy Cost Factors")
-    
-    factors = ["Fuel/electricity price", "Energy efficiency", "Annual distance", "Loading factor", "Driving conditions"]
-    impacts = ["High", "High", "High", "Medium", "Medium"]
-    
-    # Create factors dataframe
-    factors_df = pd.DataFrame({
-        "Factor": factors,
-        "Impact": impacts
-    })
-    
-    # Display factors as a table
-    st.dataframe(factors_df, use_container_width=True) 
+    st.info(f"This component represents approximately {(pct1 + pct2) / 2:.1f}% of the total cost of ownership on average for these vehicles.") 

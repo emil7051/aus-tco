@@ -433,8 +433,10 @@ def render_environmental_impact(results: Dict[str, TCOOutput]):
         col1, col2 = st.columns([3, 2])
         
         with col1:
-            # Emissions over time chart with actual annual emissions
-            fig = create_emissions_timeline_chart(result1, result2)
+            # Calculate emissions data from the two results
+            emissions_data = calculate_emissions_data(result1, result2)
+            # Now pass the calculated emissions data to the chart function
+            fig = create_emissions_timeline_chart(emissions_data)
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:

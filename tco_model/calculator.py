@@ -245,6 +245,21 @@ class TCOCalculator:
         # Calculate and add emissions data
         result.emissions = self.calculate_emissions(scenario, result)
         
+        # Store cost_components dictionary explicitly to ensure it's updated with the latest values
+        # This is important for sensitivity analysis to work correctly with varying parameters
+        result._cost_components = {
+            "acquisition": npv_costs['acquisition'],
+            "energy": npv_costs['energy'],
+            "maintenance": npv_costs['maintenance'],
+            "infrastructure": npv_costs['infrastructure'],
+            "battery_replacement": npv_costs['battery_replacement'],
+            "insurance": npv_costs['insurance'],
+            "registration": npv_costs['registration'],
+            "carbon_tax": npv_costs['carbon_tax'],
+            "other_taxes": npv_costs['other_taxes'],
+            "residual_value": npv_costs['residual_value']
+        }
+        
         return result
     
     def calculate_emissions(self, scenario: ScenarioInput, result: TCOOutput) -> EmissionsData:
