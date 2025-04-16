@@ -63,14 +63,17 @@ def render_step_navigation():
             
             # Add a button to handle the click (hidden but functional)
             if not is_disabled and not step.get("current", False):
-                st.button(
-                    step["label"],
-                    key=f"nav_step_{step['id']}",
-                    on_click=set_step,
-                    args=(step["id"],),
-                    help=f"Navigate to {step['label']}",
-                    label_visibility="collapsed"
-                )
+                # Use a small container to style it as "hidden"
+                with st.container():
+                    st.markdown('<div style="height: 0; overflow: hidden;">', unsafe_allow_html=True)
+                    st.button(
+                        " ",  # Using a space as the label to make it minimal
+                        key=f"nav_step_{step['id']}",
+                        on_click=set_step,
+                        args=(step["id"],),
+                        help=f"Navigate to {step['label']}"
+                    )
+                    st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -215,7 +218,11 @@ def render_expandable_section(title: str, content_callable, expanded: bool = Fal
     """, unsafe_allow_html=True)
     
     # Use streamlit's expander for the functionality
-    with st.expander(title, expanded=expanded, label_visibility="collapsed"):
+    # Create a hidden placeholder with empty title
+    with st.expander("", expanded=expanded):
+        # Add a title inside the expander instead of using the built-in label
+        st.markdown(f"<h4>{title}</h4>", unsafe_allow_html=True)
+        # Call the content function
         content_callable()
 
 
@@ -263,13 +270,16 @@ def render_page_tabs(tabs: List[Dict[str, Any]], container_class: str = "page-ta
             
             # Add a button for navigation (hidden but functional)
             if not is_active:
-                st.button(
-                    tab["label"],
-                    key=f"tab_{tab['id']}",
-                    on_click=set_step,
-                    args=(tab["id"],),
-                    help=f"Go to {tab['label']}",
-                    label_visibility="collapsed"
-                )
+                # Use a small container to style it as "hidden"
+                with st.container():
+                    st.markdown('<div style="height: 0; overflow: hidden;">', unsafe_allow_html=True)
+                    st.button(
+                        " ",  # Using a space as the label to make it minimal
+                        key=f"tab_{tab['id']}",
+                        on_click=set_step,
+                        args=(tab["id"],),
+                        help=f"Go to {tab['label']}"
+                    )
+                    st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True) 

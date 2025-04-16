@@ -122,6 +122,57 @@ def switch_layout_mode(config: Dict[str, Any], mode: LayoutMode) -> Dict[str, An
     return new_config
 
 
+def render_layout(config: Dict[str, Any], content: Dict[str, Any] = None, current_step: str = None):
+    """
+    Render the application layout based on the configuration.
+    
+    This function renders the appropriate layout based on the layout mode specified
+    in the configuration.
+    
+    Args:
+        config: Layout configuration dictionary
+        content: Optional content such as results dictionary to render in the layout
+        current_step: Current step for step-by-step layout (e.g., "vehicle_parameters")
+    """
+    # Get layout mode
+    mode = config.get("mode", LayoutMode.STEP_BY_STEP)
+    
+    # Store content in session state if provided
+    if content is not None:
+        if isinstance(content, dict) and "vehicle_1" in content and "vehicle_2" in content:
+            st.session_state["results"] = content
+    
+    # Render appropriate layout
+    if mode == LayoutMode.SIDE_BY_SIDE:
+        create_live_preview_layout()
+    elif mode == LayoutMode.TABBED:
+        render_tabbed_layout()
+    elif mode == LayoutMode.DASHBOARD:
+        # Import here to avoid circular imports
+        from ui.results.dashboard import render_dashboard
+        if "results" in st.session_state and "comparison" in st.session_state:
+            render_dashboard(st.session_state.results, st.session_state.comparison)
+        elif isinstance(content, dict) and "vehicle_1" in content and "vehicle_2" in content:
+            # Import here to avoid circular imports
+            from tco_model.calculator import TCOCalculator
+            calculator = TCOCalculator()
+            comparison = calculator.compare(content["vehicle_1"], content["vehicle_2"])
+            render_dashboard(content, comparison)
+        else:
+            st.warning("Please calculate TCO to view the dashboard.")
+    elif mode == LayoutMode.COMPACT:
+        # Compact mode combines sidebar with tabbed layout
+        from ui.progressive_disclosure import implement_progressive_disclosure
+        implement_progressive_disclosure(compact=True, current_step=current_step)
+    else:
+        # Default to step-by-step
+        from ui.progressive_disclosure import implement_progressive_disclosure
+        implement_progressive_disclosure(current_step=current_step)
+    
+    # Return HTML for testing
+    return f"Layout rendered in {mode} mode"
+
+
 def create_live_preview_layout():
     """
     Create a side-by-side layout with configuration in sidebar and results in main panel

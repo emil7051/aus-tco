@@ -147,7 +147,12 @@ def test_metrics_panel_integration():
     assert payback_info["has_payback"] == comparison.investment_analysis.has_payback
     if comparison.investment_analysis.payback_years:
         assert payback_info["years"] == comparison.investment_analysis.payback_years
-    assert payback_info["roi"] == comparison.investment_analysis.roi or 0
+    
+    # Check ROI specifically - if investment_analysis.roi is None, payback_info["roi"] should be 0
+    if comparison.investment_analysis.roi is None:
+        assert payback_info["roi"] == 0
+    else:
+        assert payback_info["roi"] == comparison.investment_analysis.roi
     
     # Test component details extraction
     from ui.results.dashboard import get_component_details

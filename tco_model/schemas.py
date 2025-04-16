@@ -6,7 +6,7 @@ across the system, ensuring consistency in data structure and field validation.
 """
 
 from typing import Dict, Any, List, Optional, Union, Tuple
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, field_validator
 from enum import Enum
 
 
@@ -67,8 +67,9 @@ class EnergyConsumptionSchema(BaseModel):
     regenerative_braking_efficiency: float = Field(0.65, ge=0, le=1, description="Regenerative braking efficiency")
     regen_contribution_urban: float = Field(0.2, ge=0, le=1, description="Regenerative braking contribution in urban environments")
     
-    @validator('min_rate', 'max_rate')
-    def validate_rates(cls, v, values):
+    @field_validator('min_rate', 'max_rate')
+    def validate_rates(cls, v, info):
+        values = info.data
         if 'base_rate_kwh_per_km' in values and v > values['base_rate_kwh_per_km'] * 2:
             raise ValueError("Rate should not be more than twice the base rate")
         return v
@@ -115,8 +116,9 @@ class MaintenanceSchema(BaseModel):
     scheduled_maintenance_interval_km: float = Field(..., gt=0, description="Scheduled maintenance interval in km")
     major_service_interval_km: float = Field(..., gt=0, description="Major service interval in km")
     
-    @validator('major_service_interval_km')
-    def validate_intervals(cls, v, values):
+    @field_validator('major_service_interval_km')
+    def validate_intervals(cls, v, info):
+        values = info.data
         if 'scheduled_maintenance_interval_km' in values and v < values['scheduled_maintenance_interval_km']:
             raise ValueError("Major service interval must be greater than or equal to scheduled maintenance interval")
         return v
@@ -128,7 +130,7 @@ class ResidualValuesSchema(BaseModel):
     year_10: Tuple[float, float] = Field(..., description="Residual value range at 10 years (min, max)")
     year_15: Tuple[float, float] = Field(..., description="Residual value range at 15 years (min, max)")
     
-    @validator('year_5', 'year_10', 'year_15')
+    @field_validator('year_5', 'year_10', 'year_15')
     def validate_range(cls, v):
         if len(v) != 2 or v[0] > v[1] or v[0] < 0 or v[1] > 1:
             raise ValueError("Residual value range must be a tuple of (min, max) with values between 0 and 1, and min <= max")
@@ -162,8 +164,9 @@ class FuelConsumptionSchema(BaseModel):
     load_adjustment_factor: float = Field(0.25, ge=0, description="Load adjustment factor")
     temperature_adjustment: TemperatureAdjustmentSchema = Field(default_factory=TemperatureAdjustmentSchema, description="Temperature adjustments")
     
-    @validator('min_rate', 'max_rate')
-    def validate_rates(cls, v, values):
+    @field_validator('min_rate', 'max_rate')
+    def validate_rates(cls, v, info):
+        values = info.data
         if 'base_rate_l_per_km' in values and v > values['base_rate_l_per_km'] * 2:
             raise ValueError("Rate should not be more than twice the base rate")
         return v

@@ -27,15 +27,20 @@ from ui.guide import render_guide
 from tco_model.schemas import VehicleType
 
 
-def implement_progressive_disclosure():
+def implement_progressive_disclosure(compact: bool = False, current_step: str = None):
     """
     Implement progressive disclosure based on current step.
     
     This function renders different UI components based on the
     current navigation step, creating a guided user experience.
+    
+    Args:
+        compact: Whether to use compact layout for smaller screens
+        current_step: Optional override for the current step
     """
-    # Get current step
-    current_step = get_current_step()
+    # Get current step, use override if provided
+    if current_step is None:
+        current_step = get_current_step()
     
     # Create a container for the navigation components
     with st.container():
@@ -53,7 +58,7 @@ def implement_progressive_disclosure():
     
     # Render appropriate content for the current step
     if current_step == "config":
-        render_configuration_step()
+        render_configuration_step(compact)
         
     elif current_step == "results":
         render_results_step()
@@ -63,14 +68,23 @@ def implement_progressive_disclosure():
         
     elif current_step == "guide":
         render_guide_step()
+    elif current_step == "vehicle_parameters":
+        render_vehicle_parameters_step(compact)
+    elif current_step == "operational_parameters":
+        render_operational_parameters_step(compact)
+    elif current_step == "economic_parameters":
+        render_economic_parameters_step(compact)
 
 
-def render_configuration_step():
+def render_configuration_step(compact: bool = False):
     """
     Render the vehicle configuration step.
     
     This step allows users to configure vehicle parameters, operational settings,
     economic parameters, and financing options for the TCO analysis.
+    
+    Args:
+        compact: Whether to use compact layout for smaller screens
     """
     render_section_header(
         "Vehicle Configuration", 
@@ -92,7 +106,7 @@ def render_configuration_step():
     with col1:
         # Get vehicle type for display in header
         vehicle_1 = st.session_state.get("vehicle_1_input", {})
-        v1_type = getattr(vehicle_1.get("vehicle", {}), "type", None)
+        v1_type = vehicle_1.vehicle.type if hasattr(vehicle_1, "vehicle") else None
         
         # Use standard abbreviations for display
         v1_label = "BET" if v1_type == VehicleType.BATTERY_ELECTRIC else \
@@ -108,7 +122,7 @@ def render_configuration_step():
     with col2:
         # Get vehicle type for display in header
         vehicle_2 = st.session_state.get("vehicle_2_input", {})
-        v2_type = getattr(vehicle_2.get("vehicle", {}), "type", None)
+        v2_type = vehicle_2.vehicle.type if hasattr(vehicle_2, "vehicle") else None
         
         # Use standard abbreviations for display
         v2_label = "BET" if v2_type == VehicleType.BATTERY_ELECTRIC else \
@@ -294,4 +308,139 @@ def get_available_steps(navigation_state=None):
         available_steps.append("results")
         available_steps.append("export")
     
-    return available_steps 
+    return available_steps
+
+
+def render_vehicle_parameters_step(compact: bool = False):
+    """
+    Render the vehicle parameters step.
+    
+    This step allows users to configure basic vehicle parameters.
+    
+    Args:
+        compact: Whether to use compact layout for smaller screens
+    """
+    render_section_header(
+        "Vehicle Parameters", 
+        "Configure the basic parameters for the vehicles you want to compare."
+    )
+    
+    # Configuration management for saving/loading configs
+    if not compact:
+        render_expandable_section(
+            "Configuration Management",
+            render_config_management,
+            expanded=False,
+            key="config_management_section"
+        )
+    
+    # Create columns for side-by-side vehicle inputs
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        render_subsection_header("Vehicle 1", "🚚")
+        render_vehicle_inputs(vehicle_number=1, compact=compact)
+    
+    with col2:
+        render_subsection_header("Vehicle 2", "🚚")
+        render_vehicle_inputs(vehicle_number=2, compact=compact)
+    
+    # Navigation buttons
+    _, center_col, _ = st.columns([1, 2, 1])
+    with center_col:
+        st.button(
+            "Next: Operational Parameters",
+            on_click=set_step,
+            args=("operational_parameters",),
+            use_container_width=True
+        )
+
+
+def render_operational_parameters_step(compact: bool = False):
+    """
+    Render the operational parameters step.
+    
+    This step allows users to configure operational settings.
+    
+    Args:
+        compact: Whether to use compact layout for smaller screens
+    """
+    render_section_header(
+        "Operational Parameters", 
+        "Configure the operational settings for your vehicles."
+    )
+    
+    # Create columns for side-by-side inputs
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        render_subsection_header("Vehicle 1 Operations", "🚚")
+        render_operational_inputs(vehicle_number=1, compact=compact)
+    
+    with col2:
+        render_subsection_header("Vehicle 2 Operations", "🚚")
+        render_operational_inputs(vehicle_number=2, compact=compact)
+    
+    # Navigation buttons
+    button_cols = st.columns([1, 1, 1])
+    with button_cols[0]:
+        st.button(
+            "← Back to Vehicle Parameters",
+            on_click=set_step,
+            args=("vehicle_parameters",),
+            use_container_width=True
+        )
+    
+    with button_cols[2]:
+        st.button(
+            "Next: Economic Parameters →",
+            on_click=set_step,
+            args=("economic_parameters",),
+            use_container_width=True
+        )
+
+
+def render_economic_parameters_step(compact: bool = False):
+    """
+    Render the economic parameters step.
+    
+    This step allows users to configure economic and financing parameters.
+    
+    Args:
+        compact: Whether to use compact layout for smaller screens
+    """
+    render_section_header(
+        "Economic Parameters", 
+        "Configure the economic and financing parameters for your analysis."
+    )
+    
+    # Create columns for side-by-side inputs
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        render_subsection_header("Vehicle 1 Economics", "🚚")
+        render_economic_inputs(vehicle_number=1, compact=compact)
+        render_financing_inputs(vehicle_number=1, compact=compact)
+    
+    with col2:
+        render_subsection_header("Vehicle 2 Economics", "🚚")
+        render_economic_inputs(vehicle_number=2, compact=compact)
+        render_financing_inputs(vehicle_number=2, compact=compact)
+    
+    # Navigation and calculation buttons
+    button_cols = st.columns([1, 1, 1])
+    with button_cols[0]:
+        st.button(
+            "← Back to Operational Parameters",
+            on_click=set_step,
+            args=("operational_parameters",),
+            use_container_width=True
+        )
+    
+    with button_cols[2]:
+        st.button(
+            "Calculate TCO",
+            on_click=calculate_and_show_results,
+            key="economic_calculate_button",
+            use_container_width=True
+        ) 

@@ -49,12 +49,13 @@ def on_vehicle_type_change(vehicle_number: int):
         handle_vehicle_switch(old_type_str, new_type_str, vehicle_number)
 
 
-def render_vehicle_inputs(vehicle_number: int) -> None:
+def render_vehicle_inputs(vehicle_number: int, compact: bool = False) -> None:
     """
     Render improved vehicle input forms with visual hierarchy
     
     Args:
         vehicle_number: Vehicle number (1 or 2)
+        compact: Whether to use compact mode for the form
     """
     # Get vehicle type for styling
     state_prefix = f"vehicle_{vehicle_number}_input"
@@ -63,6 +64,11 @@ def render_vehicle_inputs(vehicle_number: int) -> None:
     # Add vehicle type visual indicator
     render_vehicle_header(vehicle_number, vehicle_type)
     
+    if compact:
+        # Render basic parameters only in compact mode
+        render_basic_parameters(vehicle_number, state_prefix, vehicle_type)
+        return
+        
     # Create tabbed interface for parameter categories
     param_tabs = st.tabs([
         "Basic Parameters",
@@ -98,8 +104,9 @@ def render_basic_parameters(vehicle_number: int, state_prefix: str, vehicle_type
         state_prefix: State key prefix
         vehicle_type: Vehicle type
     """
-    # Create a card for basic parameters
-    with UIComponentFactory.create_card("Basic Parameters", f"v{vehicle_number}_basic", vehicle_type):
+    # Create an instance of UIComponentFactory
+    ui_factory = UIComponentFactory()
+    with ui_factory.create_card("Basic Parameters", f"v{vehicle_number}_basic", vehicle_type):
         # Vehicle name
         vehicle_name = st.text_input(
             "Vehicle Name",
@@ -144,8 +151,11 @@ def render_bet_performance_parameters(vehicle_number: int, state_prefix: str) ->
     """
     vehicle_type = VehicleType.BATTERY_ELECTRIC.value
     
+    # Create UIComponentFactory instance
+    ui_factory = UIComponentFactory()
+    
     # Create card for performance parameters
-    with UIComponentFactory.create_card("Performance Parameters", f"v{vehicle_number}_bet_performance", vehicle_type):
+    with ui_factory.create_card("Performance Parameters", f"v{vehicle_number}_bet_performance", vehicle_type):
         # Performance metrics
         col1, col2 = st.columns(2)
         
@@ -204,7 +214,7 @@ def render_bet_performance_parameters(vehicle_number: int, state_prefix: str) ->
             )
     
     # Create card for battery parameters
-    with UIComponentFactory.create_card("Battery Parameters", f"v{vehicle_number}_battery", vehicle_type):
+    with ui_factory.create_card("Battery Parameters", f"v{vehicle_number}_battery", vehicle_type):
         col1, col2 = st.columns(2)
         
         with col1:
@@ -258,7 +268,7 @@ def render_bet_performance_parameters(vehicle_number: int, state_prefix: str) ->
             )
     
     # Create card for energy consumption
-    with UIComponentFactory.create_card("Energy Consumption", f"v{vehicle_number}_energy", vehicle_type):
+    with ui_factory.create_card("Energy Consumption", f"v{vehicle_number}_energy", vehicle_type):
         # Base consumption rate
         base_consumption = render_parameter_with_impact(
             "Base Energy Consumption (kWh/km)",
@@ -312,8 +322,11 @@ def render_diesel_performance_parameters(vehicle_number: int, state_prefix: str)
     """
     vehicle_type = VehicleType.DIESEL.value
     
+    # Create UIComponentFactory instance
+    ui_factory = UIComponentFactory()
+    
     # Create card for performance parameters
-    with UIComponentFactory.create_card("Performance Parameters", f"v{vehicle_number}_diesel_performance", vehicle_type):
+    with ui_factory.create_card("Performance Parameters", f"v{vehicle_number}_diesel_performance", vehicle_type):
         # Performance metrics
         col1, col2 = st.columns(2)
         
@@ -372,7 +385,7 @@ def render_diesel_performance_parameters(vehicle_number: int, state_prefix: str)
             )
     
     # Create card for engine parameters
-    with UIComponentFactory.create_card("Engine Parameters", f"v{vehicle_number}_engine", vehicle_type):
+    with ui_factory.create_card("Engine Parameters", f"v{vehicle_number}_engine", vehicle_type):
         col1, col2 = st.columns(2)
         
         with col1:
@@ -408,16 +421,16 @@ def render_diesel_performance_parameters(vehicle_number: int, state_prefix: str)
                 "Emissions Standard",
                 options=["Euro III", "Euro IV", "Euro V", "Euro VI"],
                 index=3,
-                key=f"{state_prefix}.vehicle.engine.emissions_standard_input",
+                key=f"{state_prefix}.vehicle.engine.euro_emission_standard_input",
                 help="Engine emissions standard"
             )
-            set_safe_state_value(f"{state_prefix}.vehicle.engine.emissions_standard", emissions_standard)
+            set_safe_state_value(f"{state_prefix}.vehicle.engine.euro_emission_standard", emissions_standard)
             
             # AdBlue consumption
             adblue_consumption = render_parameter_with_impact(
                 "AdBlue Consumption (%)",
-                f"{state_prefix}.vehicle.engine.adblue_consumption_percentage",
-                default_value=get_safe_state_value(f"{state_prefix}.vehicle.engine.adblue_consumption_percentage", 0.05),
+                f"{state_prefix}.vehicle.engine.adblue_consumption_percent_of_diesel",
+                default_value=get_safe_state_value(f"{state_prefix}.vehicle.engine.adblue_consumption_percent_of_diesel", 0.05),
                 min_value=0.0,
                 max_value=0.1,
                 step=0.005,
@@ -427,9 +440,10 @@ def render_diesel_performance_parameters(vehicle_number: int, state_prefix: str)
             )
     
     # Create card for fuel consumption
-    with UIComponentFactory.create_card("Fuel Consumption", f"v{vehicle_number}_fuel", vehicle_type):
+    with ui_factory.create_card("Fuel Consumption", f"v{vehicle_number}_fuel", vehicle_type):
         # Base consumption rate
-        base_consumption = render_parameter_with_impact(
+        # Store in L/100km for UI but convert to L/km for the model
+        base_consumption_l_per_100km = render_parameter_with_impact(
             "Base Fuel Consumption (L/100km)",
             f"{state_prefix}.vehicle.fuel_consumption.base_rate_l_per_100km",
             default_value=get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.base_rate_l_per_100km", 38.0),
@@ -441,34 +455,62 @@ def render_diesel_performance_parameters(vehicle_number: int, state_prefix: str)
             help_text="Base fuel consumption per 100km under standard conditions"
         )
         
+        # Convert L/100km to L/km for the model
+        base_rate_l_per_km = base_consumption_l_per_100km / 100
+        set_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.base_rate", base_rate_l_per_km)
+        
         # Min/max consumption ranges
         col1, col2 = st.columns(2)
         
         with col1:
+            # Ensure min_value is always less than max_value for the slider
+            min_slider_value = 10.0
+            max_slider_value = base_consumption_l_per_100km
+            
+            # Adjust max_slider_value if it's equal to or less than min_slider_value
+            if max_slider_value <= min_slider_value:
+                max_slider_value = min_slider_value + 0.5  # Add one step
+            
             min_consumption = render_parameter_with_impact(
                 "Minimum Consumption (L/100km)",
-                f"{state_prefix}.vehicle.fuel_consumption.min_rate_l_per_100km",
-                default_value=get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.min_rate_l_per_100km", 34.0),
-                min_value=10.0,
-                max_value=base_consumption,
+                f"{state_prefix}.vehicle.fuel_consumption.min_rate",
+                default_value=get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.min_rate", 34.0),
+                min_value=min_slider_value,
+                max_value=max_slider_value,
                 step=0.5,
                 format="%.1f",
                 impact_level="low",
                 help_text="Minimum fuel consumption under ideal conditions"
             )
+            
+            # Convert L/100km to L/km for the model
+            min_rate_l_per_km = min_consumption / 100
+            set_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.min_rate", min_rate_l_per_km)
         
         with col2:
+            # Ensure min_value is always less than max_value for the slider
+            min_slider_value = base_consumption_l_per_100km
+            max_slider_value = 120.0
+            
+            # Adjust min_slider_value if it's equal to or greater than max_slider_value
+            if min_slider_value >= max_slider_value:
+                min_slider_value = max_slider_value - 0.5  # Subtract one step
+            
             max_consumption = render_parameter_with_impact(
                 "Maximum Consumption (L/100km)",
-                f"{state_prefix}.vehicle.fuel_consumption.max_rate_l_per_100km",
-                default_value=get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.max_rate_l_per_100km", 42.0),
-                min_value=base_consumption,
-                max_value=120.0,
+                f"{state_prefix}.vehicle.fuel_consumption.max_rate",
+                default_value=get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.max_rate", 42.0),
+                min_value=min_slider_value,
+                max_value=max_slider_value,
                 step=0.5,
                 format="%.1f",
                 impact_level="low",
                 help_text="Maximum fuel consumption under adverse conditions"
             )
+            
+            # Convert L/100km to L/km for the model
+            max_rate_l_per_km = max_consumption / 100
+            set_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.max_rate", max_rate_l_per_km)
 
 
 def render_advanced_parameters(vehicle_number: int, state_prefix: str, vehicle_type: str) -> None:
@@ -480,10 +522,13 @@ def render_advanced_parameters(vehicle_number: int, state_prefix: str, vehicle_t
         state_prefix: State key prefix
         vehicle_type: Vehicle type
     """
+    # Create UIComponentFactory instance
+    ui_factory = UIComponentFactory()
+    
     # Vehicle type-specific advanced parameters
     if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
         # Create card for charging parameters
-        with UIComponentFactory.create_card("Charging Parameters", f"v{vehicle_number}_charging", vehicle_type):
+        with ui_factory.create_card("Charging Parameters", f"v{vehicle_number}_charging", vehicle_type):
             col1, col2 = st.columns(2)
             
             with col1:
@@ -513,7 +558,7 @@ def render_advanced_parameters(vehicle_number: int, state_prefix: str, vehicle_t
                 )
         
         # Create card for infrastructure parameters
-        with UIComponentFactory.create_card("Infrastructure Parameters", f"v{vehicle_number}_infrastructure", vehicle_type):
+        with ui_factory.create_card("Infrastructure Parameters", f"v{vehicle_number}_infrastructure", vehicle_type):
             col1, col2 = st.columns(2)
             
             with col1:
@@ -567,7 +612,7 @@ def render_advanced_parameters(vehicle_number: int, state_prefix: str, vehicle_t
                 )
     else:
         # Create card for maintenance parameters
-        with UIComponentFactory.create_card("Maintenance Parameters", f"v{vehicle_number}_maintenance", vehicle_type):
+        with ui_factory.create_card("Maintenance Parameters", f"v{vehicle_number}_maintenance", vehicle_type):
             col1, col2 = st.columns(2)
             
             with col1:
@@ -584,46 +629,60 @@ def render_advanced_parameters(vehicle_number: int, state_prefix: str, vehicle_t
                 )
             
             with col2:
-                maintenance_increase = render_parameter_with_impact(
-                    "Annual Maintenance Increase (%)",
-                    f"{state_prefix}.vehicle.maintenance.annual_increase_percentage",
-                    default_value=get_safe_state_value(f"{state_prefix}.vehicle.maintenance.annual_increase_percentage", 0.02),
-                    min_value=0.0,
-                    max_value=0.1,
-                    step=0.005,
-                    format="%.3f",
+                scheduled_maintenance = render_parameter_with_impact(
+                    "Scheduled Maintenance (km)",
+                    f"{state_prefix}.vehicle.maintenance.scheduled_maintenance_interval_km",
+                    default_value=get_safe_state_value(f"{state_prefix}.vehicle.maintenance.scheduled_maintenance_interval_km", 25000),
+                    min_value=5000,
+                    max_value=100000,
+                    step=1000,
+                    format="%.0f",
                     impact_level="medium",
-                    help_text="Annual increase in maintenance costs"
+                    help_text="Interval for scheduled maintenance in kilometers"
                 )
     
     # Create card for residual value parameters
-    with UIComponentFactory.create_card("Residual Value", f"v{vehicle_number}_residual", vehicle_type):
+    with ui_factory.create_card("Residual Value", f"v{vehicle_number}_residual", vehicle_type):
         col1, col2 = st.columns(2)
         
         with col1:
-            residual_value_percentage = render_parameter_with_impact(
-                "Residual Value (%)",
-                f"{state_prefix}.vehicle.residual_value.percentage",
-                default_value=get_safe_state_value(f"{state_prefix}.vehicle.residual_value.percentage", 0.2),
+            year_5_residual = render_parameter_with_impact(
+                key=f"{state_prefix}.vehicle.residual_value.year_5_range",
+                label="5-Year Residual Value Range",
+                default_value=get_safe_state_value(f"{state_prefix}.vehicle.residual_value.year_5_range", (0.5, 0.6)),
                 min_value=0.0,
-                max_value=0.5,
+                max_value=1.0,
                 step=0.05,
                 format="%.2f",
                 impact_level="medium",
-                help_text="Residual value as a percentage of purchase price"
+                help_text="Residual value range at 5 years (as fraction of purchase price)",
+                input_type="range_slider"
             )
         
         with col2:
-            residual_years = render_parameter_with_impact(
-                "Residual Years",
-                f"{state_prefix}.vehicle.residual_value.years",
-                default_value=get_safe_state_value(f"{state_prefix}.vehicle.residual_value.years", 10),
-                min_value=5,
-                max_value=20,
-                step=1,
-                impact_level="low",
-                help_text="Years at which the residual value applies"
+            year_10_residual = render_parameter_with_impact(
+                key=f"{state_prefix}.vehicle.residual_value.year_10_range",
+                label="10-Year Residual Value Range",
+                default_value=get_safe_state_value(f"{state_prefix}.vehicle.residual_value.year_10_range", (0.2, 0.3)),
+                min_value=0.0,
+                max_value=0.5,
+                step=0.05,
+                impact_level="medium",
+                help_text="Residual value range at 10 years (as fraction of purchase price)",
+                input_type="range_slider"
             )
+        
+        year_15_residual = render_parameter_with_impact(
+            key=f"{state_prefix}.vehicle.residual_value.year_15_range",
+            label="15-Year Residual Value Range",
+            default_value=get_safe_state_value(f"{state_prefix}.vehicle.residual_value.year_15_range", (0.1, 0.15)),
+            min_value=0.0,
+            max_value=0.3,
+            step=0.05,
+            impact_level="low",
+            help_text="Residual value range at 15 years (as fraction of purchase price)",
+            input_type="range_slider"
+        )
 
 
 def display_derived_metrics(vehicle_number: int, state_prefix: str, vehicle_type: str) -> None:
@@ -635,6 +694,9 @@ def display_derived_metrics(vehicle_number: int, state_prefix: str, vehicle_type
         state_prefix: The state prefix for session state access
         vehicle_type: The vehicle type
     """
+    # Create UIComponentFactory instance
+    ui_factory = UIComponentFactory()
+    
     # Only show if there is sufficient data
     if vehicle_type == VehicleType.BATTERY_ELECTRIC.value:
         # Check for battery parameters
@@ -646,7 +708,7 @@ def display_derived_metrics(vehicle_number: int, state_prefix: str, vehicle_type
             return
             
         # Create card for derived metrics
-        with UIComponentFactory.create_card("Derived Metrics", f"v{vehicle_number}_derived", vehicle_type):
+        with ui_factory.create_card("Derived Metrics", f"v{vehicle_number}_derived", vehicle_type):
             # Calculate derived metrics
             battery_capacity = get_safe_state_value(f"{state_prefix}.vehicle.battery.capacity_kwh", 0)
             usable_capacity = get_safe_state_value(f"{state_prefix}.vehicle.battery.usable_capacity_percentage", 0)
@@ -682,7 +744,7 @@ def display_derived_metrics(vehicle_number: int, state_prefix: str, vehicle_type
             return
             
         # Create card for derived metrics
-        with UIComponentFactory.create_card("Derived Metrics", f"v{vehicle_number}_derived", vehicle_type):
+        with ui_factory.create_card("Derived Metrics", f"v{vehicle_number}_derived", vehicle_type):
             # Calculate derived metrics
             fuel_consumption = get_safe_state_value(f"{state_prefix}.vehicle.fuel_consumption.base_rate", 0)
             range_km = get_safe_state_value(f"{state_prefix}.vehicle.range_km", 0)
@@ -744,8 +806,8 @@ def render_vehicle_form(vehicle_number_or_params, compact: bool = False) -> None
         </div>
         """
     else:
-        # Just delegate to render_vehicle_inputs
-        return render_vehicle_inputs(vehicle_number_or_params)
+        # Delegate to render_vehicle_inputs with the compact parameter
+        return render_vehicle_inputs(vehicle_number_or_params, compact=compact)
 
 
 def validate_vehicle_parameters(params):

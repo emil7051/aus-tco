@@ -9,6 +9,7 @@ UI elements, ensuring a consistent user experience.
 import streamlit as st
 from typing import Optional, Dict, Any, List, Tuple, Union, Callable
 import uuid
+from contextlib import contextmanager
 
 from utils.ui_terminology import (
     get_formatted_label,
@@ -18,6 +19,34 @@ from utils.ui_terminology import (
 )
 
 from utils.helpers import get_safe_state_value, set_safe_state_value
+
+
+class CardContext:
+    """Context manager wrapper for card-like components"""
+    
+    def __init__(self, component=None, html_string=None):
+        """
+        Initialize with either a component or HTML string
+        
+        Args:
+            component: Streamlit container
+            html_string: HTML string representation
+        """
+        self.component = component
+        self.html_string = html_string
+        self.is_string_mode = html_string is not None
+    
+    def __enter__(self):
+        # When we have a Streamlit container, return it
+        if self.component is not None:
+            return self.component
+        # In string mode or test environment, return self so
+        # code inside the with block still executes
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Nothing to do for string mode or if no component
+        pass
 
 
 class UIComponentFactory:
@@ -35,7 +64,7 @@ class UIComponentFactory:
     
     def create_card(self, title: str, key: Optional[str] = None, 
                    vehicle_type: Optional[str] = None,
-                   card_type: Optional[str] = None) -> Union[st.container, str]:
+                   card_type: Optional[str] = None) -> CardContext:
         """
         Create a styled card container
         
@@ -46,8 +75,7 @@ class UIComponentFactory:
             card_type: Optional card type (info, warning, error, success)
         
         Returns:
-            When running in standard mode: The streamlit container object
-            When running in test mode: HTML string representation of the card
+            CardContext that can be used in a with statement
         """
         # Create unique ID if key not provided
         component_id = key or f"card_{uuid.uuid4().hex[:8]}"
@@ -62,8 +90,9 @@ class UIComponentFactory:
         # Check if we're in a testing environment without Streamlit context
         # This is cleaner than using try/except
         if not hasattr(st, "_main_dg"):
-            # Return mock HTML for tests
-            return f'<div class="{" ".join(classes)}" id="{component_id}"><h3 class="card-title">{title}</h3><div class="card-content"></div></div>'
+            # Return CardContext with HTML for tests
+            html = f'<div class="{" ".join(classes)}" id="{component_id}"><h3 class="card-title">{title}</h3><div class="card-content"></div></div>'
+            return CardContext(html_string=html)
             
         # Create card container with styling
         st.markdown(f'<div class="{" ".join(classes)}" id="{component_id}">', 
@@ -76,7 +105,8 @@ class UIComponentFactory:
         # Close the card div
         st.markdown('</div>', unsafe_allow_html=True)
         
-        return card_container
+        # Return the CardContext with the container
+        return CardContext(component=card_container)
     
     def create_input_group(self, label: str) -> Union[st.container, str]:
         """

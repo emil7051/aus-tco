@@ -612,23 +612,24 @@ def create_error_image(error_message):
 
 def extract_comparable_attributes(obj1, obj2):
     """
-    Extract comparable attributes from two objects for parameter comparison.
+    Extract attributes that are comparable between two objects.
     
     Args:
         obj1: First object
         obj2: Second object
         
     Returns:
-        Dictionary with attribute names as keys and tuples of (value1, value2) as values
+        dict: Dictionary of attribute name -> (value1, value2) tuples
     """
     attributes = {}
     
-    # Get all attributes from both objects
-    all_attrs = set(dir(obj1)).intersection(set(dir(obj2)))
+    # List of attributes to skip (including deprecated Pydantic attributes)
+    skip_attrs = ['model_config', 'model_fields', 'model_computed_fields']
     
-    for attr in all_attrs:
-        # Skip private attributes, methods, and callable attributes
-        if attr.startswith('_') or attr == 'model_config':
+    # Get all attributes of the first object
+    for attr in dir(obj1):
+        # Skip private attributes, methods, and specific attributes that cause warnings
+        if attr.startswith('_') or attr in skip_attrs:
             continue
         
         try:

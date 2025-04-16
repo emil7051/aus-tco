@@ -540,7 +540,11 @@ def load_default_scenario(vehicle_config_name: str) -> ScenarioInput:
         ScenarioInput model with default values
     """
     # Determine vehicle type from config name
-    vehicle_type = VehicleType.BATTERY_ELECTRIC if VehicleType.BATTERY_ELECTRIC.value in vehicle_config_name.lower() else VehicleType.DIESEL
+    # Check for both "battery_electric" and "bet" in the name to identify BET vehicles
+    vehicle_type = VehicleType.BATTERY_ELECTRIC if (
+        VehicleType.BATTERY_ELECTRIC.value in vehicle_config_name.lower() or 
+        "bet" in vehicle_config_name.lower()
+    ) else VehicleType.DIESEL
     
     # Use the vehicle type's value for the subdirectory
     vehicle_path = os.path.join(settings.vehicles_config_path, vehicle_type.value, f"{vehicle_config_name}.yaml")
@@ -650,6 +654,17 @@ def get_safe_state_value(key: str, default: Any = None) -> Any:
         else:
             return default
     
+    # Special case handling for analysis_period_years that might be a list
+    # from sensitivity analysis but needs to be an integer for the UI
+    if parts[-1] == "analysis_period_years" and isinstance(current, list):
+        if len(current) > 0:
+            # Return the middle element if list has odd number of elements,
+            # or the element just before the middle for even number of elements
+            middle_index = len(current) // 2
+            return current[middle_index]
+        else:
+            return default
+    
     return current
 
 
@@ -731,7 +746,7 @@ def update_state_from_model(prefix: str, model: BaseModel) -> None:
         >>> update_state_from_model("vehicle_1_input", scenario)
     """
     # Convert the model to a dictionary
-    model_dict = model.dict()
+    model_dict = model.model_dump()
     
     # Update session state for each key in the model
     _update_nested_state(prefix, model_dict)

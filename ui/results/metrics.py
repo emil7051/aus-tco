@@ -322,10 +322,10 @@ def get_payback_information(result1: TCOOutput, result2: TCOOutput,
     
     # Use the actual investment analysis from comparison
     if hasattr(comparison, "investment_analysis") and comparison.investment_analysis:
-        return {
+        payback_info = {
             "has_payback": comparison.investment_analysis.has_payback,
             "years": comparison.investment_analysis.payback_years or 0,
-            "roi": comparison.investment_analysis.roi or 0,
+            "roi": comparison.investment_analysis.roi or 0,  # Ensures roi is 0 if None
             "irr": comparison.investment_analysis.irr,
             "analysis_period": result1.analysis_period_years
         }

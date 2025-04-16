@@ -201,6 +201,7 @@ class EngineParameters(BaseModel):
     adblue_required: bool = Field(False, description="Whether AdBlue (DEF) is required")
     adblue_consumption_percent_of_diesel: Optional[float] = Field(None, ge=0, le=1, description="AdBlue consumption as a percentage of diesel consumption")
     co2_per_liter: float = Field(2.68, gt=0, description="CO2 emissions in kg per liter of diesel")
+    efficiency: float = Field(0.4, ge=0, le=1, description="Engine thermal efficiency")
 
 
 class EnergyConsumptionParameters(BaseModel):
@@ -263,6 +264,17 @@ class BETConsumptionParameters(EnergyConsumptionParameters):
 class DieselConsumptionParameters(EnergyConsumptionParameters):
     """Energy consumption parameters specific to diesel trucks."""
     base_rate: float = Field(..., gt=0, description="Base fuel consumption in litres/km")
+    base_rate_l_per_100km: Optional[float] = Field(None, description="Base fuel consumption in litres/100km (for UI)")
+    
+    @property
+    def get_base_rate_l_per_100km(self) -> float:
+        """Get base fuel consumption in L/100km."""
+        return self.base_rate * 100
+    
+    @property
+    def set_base_rate_l_per_100km(self, value: float) -> None:
+        """Set base fuel consumption from L/100km."""
+        self.base_rate = value / 100
     
     def calculate_consumption(self, distance_km: float, load_factor: float = 1.0,
                              is_urban: bool = False, is_cold: bool = False,

@@ -424,8 +424,8 @@ class TestCompleteIntegration:
         
         # Calculate emissions data first
         emissions_data = calculate_emissions_data(bet_result, diesel_result)
-        # Pass emissions data to chart function
-        emissions_fig = create_emissions_timeline_chart(emissions_data)
+        # Pass both result objects to the chart function
+        emissions_fig = create_emissions_timeline_chart(bet_result, diesel_result)
         assert emissions_fig is not None
     
     def test_live_preview_integration(self, bet_scenario, diesel_scenario):
@@ -503,8 +503,8 @@ class TestCompleteIntegration:
         from ui.results.environmental import create_emissions_timeline_chart, calculate_emissions_data
         # Calculate emissions data first
         emissions_data = calculate_emissions_data(bet_result, diesel_result)
-        # Pass emissions data to chart function
-        emissions_fig = create_emissions_timeline_chart(emissions_data)
+        # Pass both result objects to the chart function
+        emissions_fig = create_emissions_timeline_chart(bet_result, diesel_result)
         assert emissions_fig is not None
         
         # Test parameter impact integration

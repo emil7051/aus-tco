@@ -1,0 +1,89 @@
+# Battery Electric Truck (BET) Urban Configuration
+
+# Basic vehicle information
+vehicle_info:
+  type: "battery_electric"
+  category: "rigid"
+  name: "Default BET Urban Rigid"
+
+# Purchase and cost information
+purchase:
+  base_price_2025: 300000
+  annual_price_decrease_real: 0.02
+
+# Battery specifications
+battery:
+  capacity_kwh: 300
+  usable_capacity_percentage: 0.90
+  degradation_rate_annual: 0.02
+  replacement_threshold: 0.70
+  expected_lifecycle_years: 8
+  replacement_cost_factor: 0.80
+
+# Energy consumption
+energy_consumption:
+  base_rate_kwh_per_km: 1.20
+  min_rate: 1.10
+  max_rate: 1.30
+  load_adjustment_factor: 0.15
+  temperature_adjustment:
+    hot_weather: 0.05
+    cold_weather: 0.15
+  regenerative_braking_efficiency: 0.65
+  regen_contribution_urban: 0.30
+
+# Charging specifications
+charging:
+  max_charging_power_kw: 150
+  charging_efficiency: 0.90
+  charging_strategy: "overnight_depot"
+  strategies:
+    overnight_depot:
+      electricity_rate_type: "off_peak_tou"
+
+# Performance specifications
+performance:
+  max_payload_tonnes: 10
+  range_km: 250
+
+# Maintenance
+maintenance:
+  cost_per_km: 0.07
+  scheduled_maintenance_interval_km: 40000
+  major_service_interval_km: 120000
+  detailed_costs:
+    annual_fixed_min: 500
+    annual_fixed_max: 1200
+
+# Infrastructure
+infrastructure:
+  charger_hardware_cost: 50000
+  installation_cost: 30000
+  maintenance_annual_percentage: 0.015
+  trucks_per_charger: 1.5
+  grid_upgrade_cost: 0
+
+# Residual values
+residual_values:
+  year_5: [0.40, 0.50]
+  year_10: [0.20, 0.30]
+  year_15: [0.10, 0.15]
+
+# Available models reference
+available_models:
+  - manufacturer: "Volvo"
+    model: "FE Electric"
+    battery_kwh: [200, 300]
+    range_km: [200, 300]
+    max_charging_kw: 150
+  - manufacturer: "Mercedes-Benz"
+    model: "eActros 300"
+    battery_kwh: 336
+    range_km: 220
+    max_charging_kw: 160
+  - manufacturer: "Fuso"
+    model: "eCanter"
+    battery_kwh: 135
+    range_km: 150
+    max_charging_kw: 104
+    notes: "Smaller urban delivery truck" 

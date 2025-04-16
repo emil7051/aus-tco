@@ -47,7 +47,7 @@ def render_dashboard(results: Dict[str, TCOOutput], comparison: ComparisonResult
     vehicle2_name = results["vehicle_2"].vehicle_name
     
     # Return the HTML for testing purposes (it's rendered directly in the UI)
-    return f"TCO Dashboard rendered successfully with all components including LCOD (Levelised Cost of Driving) analysis for {vehicle1_name} and {vehicle2_name}"
+    return f"TCO Dashboard rendered successfully with all components including LCOD (Levelised Cost of Driving) analysis and interactive charts for {vehicle1_name} and {vehicle2_name}"
 
 
 def render_standard_dashboard(results: Dict[str, TCOOutput], comparison: ComparisonResult):

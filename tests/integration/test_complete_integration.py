@@ -38,8 +38,8 @@ class TestEnvironmentalIntegration:
         from ui.results.environmental import create_emissions_timeline_chart
         fig = create_emissions_timeline_chart(bet_result, diesel_result)
         
-        # Verify chart has data from both vehicles (2 bar traces + 2 line traces)
-        assert len(fig.data) == 4
+        # Verify chart has data from both vehicles (2 line traces + 2 bar traces + 1 area trace)
+        assert len(fig.data) == 5
         assert len(fig.data[0].y) == len(bet_result.emissions.annual_co2_tonnes)
         assert len(fig.data[1].y) == len(diesel_result.emissions.annual_co2_tonnes)
     
@@ -313,7 +313,7 @@ class TestFullIntegrationWorkflow:
         # 2. Test environmental impact analysis
         from ui.results.environmental import create_emissions_timeline_chart
         emissions_fig = create_emissions_timeline_chart(bet_result, diesel_result)
-        assert len(emissions_fig.data) == 4
+        assert len(emissions_fig.data) == 5
         
         # 3. Test parameter impact analysis
         from ui.results.live_preview import create_parameter_impact_chart, determine_has_tipping_point

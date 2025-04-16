@@ -28,8 +28,11 @@ def render_parameter_comparisons_page() -> None:
     Parameter values with higher impact on TCO results are highlighted.
     """)
     
-    # Initialize comparison content
-    with UIComponentFactory.create_card("Parameter Comparison", "param_comparison", card_type="info"):
+    # Create UIComponentFactory instance
+    ui_factory = UIComponentFactory()
+    
+    # Create a card for parameter comparison
+    with ui_factory.create_card("Parameter Comparison", "param_comparison", card_type="info"):
         render_parameter_comparison_tool()
     
     # Add explanation and guide

@@ -6,6 +6,7 @@ user inputs are valid within defined constraints and providing appropriate feedb
 """
 
 from typing import Dict, Any, Optional, Callable, List, Union
+import random
 
 def validate_parameter(key: str, value: Any) -> Dict[str, Any]:
     """
@@ -204,13 +205,132 @@ def create_validated_input(
             help=help_text,
             **input_args
         )
-    elif input_type == "slider":
+    elif input_type == "range_slider":
+        # Handle the case where value is a tuple for range sliders
+        if not isinstance(current_value, tuple):
+            # If not a tuple, create a default range
+            min_val = float(input_args.get('min_value', 0))
+            max_val = float(input_args.get('max_value', 1))
+            step_val = float(input_args.get('step', 0.1))
+            # Create a default range that spans 10% of the available range
+            range_span = (max_val - min_val) * 0.1
+            current_value = (min_val, min_val + range_span)
+        
         value = st.slider(
             label=label,
-            value=float(current_value) if current_value is not None else 0.0,
+            value=current_value,
+            min_value=float(input_args.get('min_value', 0)),
+            max_value=float(input_args.get('max_value', 1)),
+            step=float(input_args.get('step', 0.1)),
             help=help_text,
-            **input_args
+            format=input_args.get('format', '%.2f')
         )
+    elif input_type == "slider":
+        # Handle the case where value could be a list for range sliders
+        if isinstance(current_value, list) or (isinstance(input_args.get("value"), list)):
+            # For range sliders (if value is a list), ensure min_value and max_value are also lists
+            slider_args = input_args.copy()
+            
+            # If current_value is a list, make sure min_value and max_value are lists too
+            if isinstance(current_value, list) and len(current_value) == 2:
+                # Ensure min_value is a list if value is a list
+                if not isinstance(slider_args.get("min_value"), list):
+                    min_val = slider_args.get("min_value", 0)
+                    slider_args["min_value"] = [min_val, min_val]
+                
+                # Ensure max_value is a list if value is a list
+                if not isinstance(slider_args.get("max_value"), list):
+                    max_val = slider_args.get("max_value", 100)
+                    slider_args["max_value"] = [max_val, max_val]
+                
+                # Ensure current_value elements are within min_value and max_value bounds
+                min_vals = slider_args.get("min_value", [0, 0])
+                max_vals = slider_args.get("max_value", [100, 100])
+                step = float(slider_args.get("step", 1))
+                
+                # Apply constraints to each element of the current_value list
+                for i in range(len(current_value)):
+                    if i < len(min_vals) and i < len(max_vals):
+                        # Ensure value is within bounds
+                        current_value[i] = max(min_vals[i], min(max_vals[i], float(current_value[i])))
+                        
+                        # Adjust to nearest valid step if needed
+                        if step > 0:
+                            # Calculate steps from minimum
+                            steps_from_min = round((current_value[i] - min_vals[i]) / step)
+                            # Recalculate value based on steps
+                            current_value[i] = min_vals[i] + (steps_from_min * step)
+                            # Ensure we don't exceed max_val due to rounding
+                            current_value[i] = min(current_value[i], max_vals[i])
+                
+                # Make sure first value <= second value for range sliders
+                if len(current_value) >= 2 and current_value[0] > current_value[1]:
+                    # Swap values if first is greater than second
+                    current_value[0], current_value[1] = current_value[1], current_value[0]
+            
+            value = st.slider(
+                label=label,
+                value=current_value if current_value is not None else slider_args.get("value", 0.0),
+                help=help_text,
+                **slider_args
+            )
+        else:
+            # Special case handling for analysis_period_years or any list value when the UI expects a scalar
+            if isinstance(current_value, list):
+                # For analysis_period_years specifically, or any key containing 'analysis_period'
+                if "analysis_period" in key:
+                    # Take the middle value if it's a list from sensitivity analysis
+                    middle_index = len(current_value) // 2
+                    current_value = current_value[middle_index]
+                # For any other list value that needs to be converted to a scalar
+                else:
+                    # Try to extract a single value from the list
+                    if len(current_value) > 0:
+                        current_value = current_value[0]
+                    else:
+                        current_value = 0.0
+            
+            # For single value sliders
+            # Handle tuple values by converting to a single float value if needed
+            if isinstance(current_value, tuple):
+                # For tuples, use the first value
+                slider_value = current_value[0] if len(current_value) > 0 else 0.0
+            else:
+                slider_value = current_value
+            
+            # Get min, max, and step values
+            min_val = float(input_args.get('min_value', 0))
+            max_val = float(input_args.get('max_value', 100))
+            step_val = float(input_args.get('step', 1))
+            
+            # Ensure min_value is strictly less than max_value
+            if min_val >= max_val:
+                # Adjust max_val to be at least one step greater than min_val
+                max_val = min_val + step_val
+            
+            # Ensure slider_value is within min and max bounds and aligns with step
+            if slider_value is not None:
+                # Ensure value is within bounds
+                slider_value = max(min_val, min(max_val, float(slider_value)))
+                
+                # Adjust to nearest valid step if needed
+                if step_val > 0:
+                    # Calculate steps from minimum
+                    steps_from_min = round((slider_value - min_val) / step_val)
+                    # Recalculate value based on steps to ensure it aligns with step size
+                    slider_value = min_val + (steps_from_min * step_val)
+                    # Ensure we don't exceed max_val due to rounding
+                    slider_value = min(slider_value, max_val)
+            
+            value = st.slider(
+                label=label,
+                value=float(slider_value) if slider_value is not None else min_val,
+                min_value=min_val,
+                max_value=max_val,
+                step=step_val,
+                help=help_text,
+                key=f"slider_{key}_{random.randint(10000, 99999)}"
+            )
     else:
         raise ValueError(f"Unknown input type: {input_type}")
     

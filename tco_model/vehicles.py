@@ -60,7 +60,7 @@ def get_bet_parameters(config_name: Optional[str] = None) -> BETParameters:
         config_name = "default_bet"
     
     # Load the YAML configuration file
-    config_path = Path("config/vehicles") / f"{config_name}.yaml"
+    config_path = Path("config/vehicles/bet") / f"{config_name}.yaml"
     yaml_data = load_yaml_file(config_path)
     
     # Transform YAML structure to match model expectations
@@ -86,7 +86,7 @@ def get_diesel_parameters(config_name: Optional[str] = None) -> DieselParameters
         config_name = "default_ice"
     
     # Load the YAML configuration file
-    config_path = Path("config/vehicles") / f"{config_name}.yaml"
+    config_path = Path("config/vehicles/diesel") / f"{config_name}.yaml"
     yaml_data = load_yaml_file(config_path)
     
     # Transform YAML structure to match model expectations
@@ -303,28 +303,37 @@ def list_available_vehicle_configurations() -> Dict[VehicleType, List[str]]:
         VehicleType.DIESEL: [],
     }
     
-    # Get all YAML files in the vehicles directory
-    config_dir = Path("config/vehicles")
-    for config_file in config_dir.glob("*.yaml"):
-        # Load the YAML file to check the vehicle type
-        config_data = load_yaml_file(config_file)
-        
-        # Try to get vehicle type from both formats
-        vehicle_info = config_data.get('vehicle_info', {})
-        vehicle_type_str = vehicle_info.get('type', config_data.get('type', ''))
-        
-        if not vehicle_type_str:
+    # Check each vehicle type subdirectory
+    for vehicle_type in available_configs.keys():
+        type_dir = Path("config/vehicles") / vehicle_type.value
+        if not type_dir.exists():
             continue
-        
-        # Convert string to VehicleType enum
-        try:
-            vehicle_type = VehicleType(vehicle_type_str)
-        except ValueError:
-            # Skip if the vehicle type is not recognized
-            continue
-        
-        # Add the configuration name to the appropriate list
-        config_name = config_file.stem
-        available_configs[vehicle_type].append(config_name)
+            
+        # Get all YAML files in the vehicle type directory
+        for config_file in type_dir.glob("*.yaml"):
+            try:
+                # Load the YAML file to check the vehicle type
+                config_data = load_yaml_file(config_file)
+                
+                # Try to get vehicle type from both formats
+                vehicle_info = config_data.get('vehicle_info', {})
+                vehicle_type_str = vehicle_info.get('type', config_data.get('type', ''))
+                
+                if not vehicle_type_str:
+                    continue
+                
+                # Convert string to VehicleType enum
+                try:
+                    file_vehicle_type = VehicleType(vehicle_type_str)
+                    
+                    # Add the configuration name to the appropriate list
+                    config_name = config_file.stem
+                    available_configs[file_vehicle_type].append(config_name)
+                except ValueError:
+                    # Skip if the vehicle type is not recognized
+                    continue
+            except Exception as e:
+                print(f"Error loading config file {config_file}: {str(e)}")
+                continue
     
     return available_configs 

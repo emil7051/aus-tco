@@ -35,41 +35,136 @@ def render_parameter_with_impact(
     Returns:
         Parameter value
     """
-    # Create layout with impact indicator
-    col1, col2 = st.columns([0.95, 0.05])
+    # Debug output
+    print(f"DEBUG render_parameter_with_impact: Key={key}, Default value type={type(default_value)}, Value={default_value}")
     
-    with col1:
-        # Determine input type based on default value
-        input_type = "number"
-        if isinstance(default_value, bool):
-            input_type = "checkbox"
-        elif isinstance(default_value, str):
-            input_type = "text"
-        elif "min_value" in input_args and "max_value" in input_args and "step" in input_args:
-            input_type = "slider"
-            
-        # Create the input field
-        value, validation_result = create_validated_input(
-            label=label,
-            key=key,
-            default=default_value,
-            help_text=help_text,
-            input_type=input_type,
-            **input_args
-        )
+    # Create a container for the parameter with impact indicator
+    container = st.container()
     
-    with col2:
-        # Get impact details based on parameter name
-        param_name = key.split('.')[-1]
-        impact_info = create_impact_indicator(param_name)
+    # Add custom CSS to position the impact indicator
+    st.markdown("""
+    <style>
+    .parameter-container {
+        position: relative;
+        width: 100%;
+    }
+    .impact-indicator-overlay {
+        position: absolute;
+        top: 2px;
+        right: 8px;
+        z-index: 1000;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Get impact details based on parameter name
+    param_name = key.split('.')[-1]
+    impact_info = create_impact_indicator(param_name)
+    
+    # Determine input type based on default value
+    input_type = "number"
+    if isinstance(default_value, bool):
+        input_type = "checkbox"
+    elif isinstance(default_value, str):
+        input_type = "text"
+    elif "min_value" in input_args and "max_value" in input_args and "step" in input_args:
+        input_type = "slider"
         
-        # Display impact indicator
-        st.markdown(f"""
-        <div class="impact-indicator {impact_info['class']}" 
-             title="{impact_info['tooltip']}">
+        # Handle case where default value is a list but min/max are not
+        if isinstance(default_value, list) and len(default_value) == 2:
+            # Create a copy of input_args to avoid modifying the original
+            slider_args = input_args.copy()
+            
+            # For range sliders, convert min_value and max_value to lists if they're not already
+            if not isinstance(slider_args.get("min_value"), list):
+                min_val = slider_args.get("min_value", 0)
+                slider_args["min_value"] = [min_val, min_val]
+            
+            if not isinstance(slider_args.get("max_value"), list):
+                max_val = slider_args.get("max_value", 100)
+                slider_args["max_value"] = [max_val, max_val]
+            
+            # Remove input_type from slider_args if present
+            if "input_type" in slider_args:
+                del slider_args["input_type"]
+            
+            # Create the input field with modified args
+            with container:
+                value, validation_result = create_validated_input(
+                    label=label,
+                    key=key,
+                    default=default_value,
+                    help_text=help_text,
+                    input_type="slider",
+                    **slider_args
+                )
+        else:
+            # Standard case
+            input_args_copy = input_args.copy()
+            if "input_type" in input_args_copy:
+                del input_args_copy["input_type"]
+                
+            with container:
+                value, validation_result = create_validated_input(
+                    label=label,
+                    key=key,
+                    default=default_value,
+                    help_text=help_text,
+                    input_type="slider",
+                    **input_args_copy
+                )
+    else:
+        # Create the input field
+        if input_type == "number_input":
+            with container:
+                input_args_copy = input_args.copy()
+                if "input_type" in input_args_copy:
+                    del input_args_copy["input_type"]
+                value, validation_result = create_validated_input(
+                    label=label,
+                    key=key,
+                    default=default_value,
+                    help_text=help_text,
+                    input_type="number",
+                    **input_args_copy
+                )
+        elif input_type == "slider":
+            with container:
+                input_args_copy = input_args.copy()
+                if "input_type" in input_args_copy:
+                    del input_args_copy["input_type"]
+                value, validation_result = create_validated_input(
+                    label=label,
+                    key=key,
+                    default=default_value,
+                    help_text=help_text,
+                    input_type="slider",
+                    **input_args_copy
+                )
+        else:
+            # Default case for other input types
+            with container:
+                input_args_copy = input_args.copy()
+                if "input_type" in input_args_copy:
+                    del input_args_copy["input_type"]
+                value, validation_result = create_validated_input(
+                    label=label,
+                    key=key,
+                    default=default_value,
+                    help_text=help_text,
+                    input_type=input_type,
+                    **input_args_copy
+                )
+    
+    # Add impact indicator as HTML overlay
+    st.markdown(f"""
+    <div class="impact-indicator-overlay" 
+         title="{impact_info['tooltip']}">
+        <div class="impact-indicator {impact_info['class']}">
             {impact_info['icon']}
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
     
     return value
 

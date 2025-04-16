@@ -170,7 +170,12 @@ def _render_vehicle_selector(
         type_configs = available_configs.get(current_type, [])
         
         # Get the selected config name (or default to the first one)
-        default_config_name = f"default_{current_type.value}"
+        # Handle both enum and string types
+        if isinstance(current_type, VehicleType):
+            default_config_name = f"default_{current_type.value}"
+        else:
+            # If it's already a string, use it directly
+            default_config_name = f"default_{current_type}"
         
         # Display a selectbox for available configurations
         with col2:
