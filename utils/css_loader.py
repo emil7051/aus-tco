@@ -58,14 +58,19 @@ def load_css(theme: str = "light") -> None:
     
     # Combine all CSS into a single string
     css_content = ""
+    missing_files = []
     
     # Function to safely read CSS file
     def read_css_file(file_path: Path) -> str:
         if file_path.exists():
-            with open(file_path, "r") as f:
-                return f.read() + "\n"
+            try:
+                with open(file_path, "r") as f:
+                    return f.read() + "\n"
+            except Exception as e:
+                st.error(f"Error reading CSS file {file_path}: {str(e)}")
+                return ""
         else:
-            st.warning(f"CSS file not found: {file_path}")
+            missing_files.append(str(file_path))
             return ""
     
     # Add base files first
@@ -81,6 +86,34 @@ def load_css(theme: str = "light") -> None:
     
     # Inject the CSS into the Streamlit app
     st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    
+    # Add fallback styling if theme file is missing
+    if str(theme_file) in missing_files:
+        # Apply basic styling to ensure the app is usable
+        fallback_css = """
+        .stApp {
+            background-color: #f0f2f6;
+            color: #31333F;
+        }
+        
+        .stSidebar {
+            background-color: #f0f2f6;
+            border-right: 1px solid #eaecef;
+        }
+        
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: #f0f2f6;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            color: #31333F;
+        }
+        """
+        st.markdown(f"<style>{fallback_css}</style>", unsafe_allow_html=True)
+        
+    # Check if any files were missing and log them
+    if missing_files and st.session_state.get("debug_mode", False):
+        st.warning(f"Some CSS files were not found: {', '.join(missing_files)}")
 
 def load_css_resources() -> str:
     """

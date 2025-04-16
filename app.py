@@ -32,7 +32,7 @@ from utils.helpers import (
     update_state_from_model,
     update_model_from_state,
     debug_state,
-    initialize_nested_state,
+    initialize_nested_state, _extract_nested_state,
 )
 
 # Import UI terminology and component utilities
@@ -118,18 +118,38 @@ def update_vehicle_inputs(vehicle_number: int) -> Tuple[bool, Optional[str]]:
     state_key = f"vehicle_{vehicle_number}_input"
     
     try:
-        # Update the model from session state values
-        updated_model = update_model_from_state(state_key, ScenarioInput)
+        # Extract data from session state
+        model_dict = _extract_nested_state(state_key)
         
-        if updated_model:
+        # Ensure all required fields are present
+        if "operational" not in model_dict:
+            model_dict["operational"] = {"annual_distance_km": 100000.0}
+        if "economic" not in model_dict:
+            model_dict["economic"] = {"discount_rate_real": 0.07, "inflation_rate": 0.025, "analysis_period_years": 15}
+        if "vehicle" not in model_dict:
+            vehicle_type = "battery_electric" if vehicle_number == 1 else "diesel"
+            model_dict["vehicle"] = {"type": vehicle_type, "name": f"Vehicle {vehicle_number}"}
+        if "financing" not in model_dict:
+            model_dict["financing"] = {"loan_term_years": 5, "loan_interest_rate": 0.05, "down_payment_percentage": 0.2}
+        if "scenario_name" not in model_dict:
+            model_dict["scenario_name"] = f"Vehicle {vehicle_number} Scenario"
+            
+        # Manually create the model to handle any validation errors
+        try:
+            from tco_model.models import ScenarioInput
+            updated_model = ScenarioInput(**model_dict)
+            
             # Store the updated model
             st.session_state[state_key] = updated_model
             return True, None
-        else:
-            return False, "Failed to validate input model"
+        except Exception as e:
+            error_msg = f"Validation error: {str(e)}"
+            print(f"Vehicle {vehicle_number} validation error: {error_msg}")
+            return False, f"Vehicle {vehicle_number} validation error: {str(e)}"
             
     except Exception as e:
         error_msg = f"Error updating vehicle {vehicle_number} inputs: {str(e)}"
+        print(error_msg)
         return False, error_msg
 
 
@@ -245,6 +265,7 @@ def main():
         page_title="Australian Heavy Vehicle TCO Modeller",
         page_icon="🚚",
         layout="wide",
+        initial_sidebar_state="expanded",
     )
     
     # Initialize session state
@@ -255,6 +276,13 @@ def main():
     
     # Load CSS with theme
     load_css(selected_theme)
+    
+    # Apply theme attributes to the DOM
+    st.markdown(f"""
+        <script>
+            document.documentElement.setAttribute('data-theme', '{selected_theme}');
+        </script>
+    """, unsafe_allow_html=True)
     
     # Render the application title
     st.title("Australian Heavy Vehicle TCO Modeller")
